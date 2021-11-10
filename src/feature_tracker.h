@@ -26,8 +26,9 @@ public:
 
     // Get keypoints and descriptors by timestamp
     // If having been calculated, just read from file 
+    void getKpAndDes(const Mat& img, vector<KeyPoint>* kp_ptr, Mat* des_ptr);
     void getKpAndDes(const string& t, vector<KeyPoint>* kp_ptr, Mat* des_ptr);
-    void match(const vector<KeyPoint>& kp1, const Mat& des1, const vector<KeyPoint>& kp2, const Mat& des2, vector<DMatch>* matches_ptr);
+    void match(const Mat& des1, const Mat& des2, vector<DMatch>* matches_ptr);
     void match(const string& t1, const string& t2, vector<DMatch>* matches_ptr);
 
 // private:

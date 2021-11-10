@@ -30,6 +30,13 @@ FeatureTracker::FeatureTracker() :
     ratio_thresh(0.2f) {
     }
 
+void FeatureTracker::getKpAndDes(const Mat& img, vector<KeyPoint>* kp_ptr, Mat* des_ptr) {
+    vector<KeyPoint>& kp = *kp_ptr;
+    Mat& des = *des_ptr;
+    Ptr<SURF> detector = SURF::create( minHessian );
+    detector->detectAndCompute( img, noArray(), kp, des);
+}
+
 void FeatureTracker::getKpAndDes(const string& t, vector<KeyPoint>* kp_ptr, Mat* des_ptr) {
     vector<KeyPoint>& kp = *kp_ptr;
     Mat& des = *des_ptr;
@@ -39,8 +46,8 @@ void FeatureTracker::getKpAndDes(const string& t, vector<KeyPoint>* kp_ptr, Mat*
     detector->detectAndCompute( img, noArray(), kp, des);
 }
 
-void FeatureTracker::match(const vector<KeyPoint>& kp1, const Mat& des1, 
-                           const vector<KeyPoint>& kp2, const Mat& des2, 
+void FeatureTracker::match(const Mat& des1, 
+                           const Mat& des2, 
                            vector<DMatch>* matches_ptr) {
     // return
     vector<DMatch>& matches = *matches_ptr;
@@ -110,12 +117,14 @@ void FeatureTracker::match(const string& t1, const string& t2, vector<DMatch>* m
 //     Mat des1;
 //     vector<KeyPoint> kp2;
 //     Mat des2;
-//     tracker.getKpAndDes(t1, &kp1, &des1);
-//     tracker.getKpAndDes(t2, &kp2, &des2);
+//     // tracker.getKpAndDes(t1, &kp1, &des1);
+//     // tracker.getKpAndDes(t2, &kp2, &des2);
+//     tracker.getKpAndDes(img1, &kp1, &des1);
+//     tracker.getKpAndDes(img2, &kp2, &des2);
 
 //     vector<DMatch> matches;
 //     // tracker.match(t1, t2, &matches);
-//     tracker.match(kp1, des1, kp1, des2, &matches);
+//     tracker.match(des1, des2, &matches);
 //     cout << matches.size() << endl;
 
 //     Mat img_matches;
