@@ -59,18 +59,30 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
             clm_curr.setMeasurement(kp[match.queryIdx]);
             idx = clmsFind_(clm); // TODO: don't use hash for debugging; need to change back to hash
             if (idx != -1) {
-                clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
+                if (wolrdToImg_(poses[T], 
+                                landmarks[clms[idx].landmarkIdx][0], landmarks[clms[idx].landmarkIdx][1], landmarks[clms[idx].landmarkIdx][2], 
+                                &predicted_x, &predicted_y)) {
+                    clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
+                    clms.push_back(clm_curr);
+                } else {
+                    // printf("\n", poses[t], )
+                }
             } else {
                 x = kp[match.trainIdx].pt.x;
                 y = kp[match.trainIdx].pt.y;
                 imgToWorld_(poses[t], x, y, depth, &X, &Y, &Z);
                 clm.setLandmarkIdx(landmarks.size());
                 clms.push_back(clm);
-                clm_curr.setLandmarkIdx(landmarks.size());
+                if (wolrdToImg_(poses[T], X, Y, Z, &predicted_x, &predicted_y)) {
+                    clm_curr.setLandmarkIdx(landmarks.size());
+                    clms.push_back(clm_curr);
+                } else {
+
+                }
                 double* landmark = new double[]{X, Y, Z};
                 landmarks.push_back(landmark);
             }
-            clms.push_back(clm_curr);
+            // clms.push_back(clm_curr);
         }
     }
 }
@@ -199,7 +211,7 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     Z = landmark_trans.z();
 }
 
-void Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+bool Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr) {
     float &x = *x_ptr;
     float &y = *y_ptr;
@@ -210,6 +222,7 @@ void Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const flo
     float yp = measurement.y() / measurement.z();
     x = xp * fx + cx;
     y = yp + fy + cy;
+    return (x < (float)(imgWidth + imgEdge)) && (x >= (float)(-imgEdge)) && (y <= (float)(imgHeight + imgEdge)) && (y > (float)(-imgEdge));
 }
 
 

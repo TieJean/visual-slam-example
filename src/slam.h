@@ -44,7 +44,7 @@ const size_t landmarkDim = 3;
 const size_t measurementDim = 2;
 const size_t imgHeight = 480;
 const size_t imgWidth = 640;
-const size_t imgEdge = 0;
+const int imgEdge = 50;
 
 // camera, landmark, measurement idx
 class CLM {
@@ -156,7 +156,7 @@ private:
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
     void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
-    void wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+    bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr);
     
 
