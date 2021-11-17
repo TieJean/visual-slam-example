@@ -45,6 +45,7 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
 
     int idx, x, y;
     float X, Y, Z;
+    float predicted_x, predicted_y;
     size_t T = features.size() - 1;
     for (size_t t = 0; t < T; ++t) {
         kp = features[t].first;
@@ -137,6 +138,10 @@ void Slam::displayPosesAndLandmarkcs() {
     }
 }
 
+// void Slam::dumpToCSV(string path) {
+
+// }
+
 
 int Slam::clmsFind_(const CLM& clm) {
     for (int i = 0; i < clms.size(); ++i) {
@@ -156,7 +161,7 @@ float Slam::getDist_(const Vector3f& odom1, const Vector3f& odom2) {
     return sqrt( x_pow + y_pow + z_pow);
 }
 
-void Slam::imgToWorld_(double* camera, const size_t& x, const size_t& y, const Mat& depth,
+void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& depth,
                  float* X_ptr, float* Y_ptr, float* Z_ptr) {
     float &X = *X_ptr;
     float &Y = *Y_ptr;
@@ -172,6 +177,39 @@ void Slam::imgToWorld_(double* camera, const size_t& x, const size_t& y, const M
     X = landmark_trans.x();
     Y = landmark_trans.y();
     Z = landmark_trans.z();
+}
+
+void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
+                 float* X_ptr, float* Y_ptr, float* Z_ptr) {
+    float &X = *X_ptr;
+    float &Y = *Y_ptr;
+    float &Z = *Z_ptr;
+
+    const float factor = 5000.0;
+
+    Z = z / factor;
+    X = (x - cx) * Z / fx;
+    Y = (y - cy) * Z / fy;
+    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    Vector3f landmark_trans = r.inverse() * Vector3f(X - camera[4], Y - camera[5], Z - camera[6]);
+    printf("imgToWorld_: %.2f, %.2f, %.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", 
+        X, Y, Z, X - camera[4], Y - camera[5], Z - camera[6], landmark_trans.x(), landmark_trans.y(), landmark_trans.z());
+    X = landmark_trans.x();
+    Y = landmark_trans.y();
+    Z = landmark_trans.z();
+}
+
+void Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+                     float* x_ptr, float* y_ptr) {
+    float &x = *x_ptr;
+    float &y = *y_ptr;
+
+    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    Vector3f measurement = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
+    float xp = measurement.x() / measurement.z();
+    float yp = measurement.y() / measurement.z();
+    x = xp * fx + cx;
+    y = yp + fy + cy;
 }
 
 

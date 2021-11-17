@@ -7,16 +7,20 @@ using namespace std;
 using namespace slam;
 
 int main() {
-
+    
     // ReprojectionError reprojection(cx, cy);
-    // double camera_test[] = {0, 0, 0, 1.0, 0.5, 0.5, 0.0};
+    // double camera1[] = {0.0, 0, 1.0, 0.0, 0.0, 0.0, 0.0};
+    // double camera2[] = {0.707, 0, 0.707, 0.0, 1.0, 0.0, 1.0};
+    // double camera3[] = {-0.707, 0, 0.707, 0.0, -1.0, 0.0, 1.0};
     // double point_test[]  = {0, 0, 1};
     // double residual[2];
-    // cout << "camera: " << camera_test[0] << ", " << camera_test[1] << ", " << camera_test[2] << ", " << camera_test[3] 
-    //         << ", " << camera_test[4] << ", " << camera_test[5] << ", " << camera_test[6] << endl;
-    // cout << "point: " <<point_test[0] << ", " << point_test[1] << ", " << point_test[2] << endl;
-    // reprojection(camera_test, point_test, residual);
-    
+    // reprojection(camera1, point_test, residual);
+    // reprojection(camera2, point_test, residual);
+    // reprojection(camera3, point_test, residual);
+    // Slam slam;
+    // float X, Y, Z;
+    // slam.imgToWorld_(camera2, cx, cy, 1.0*5000, &X, &Y, &Z);
+    // printf("world coordinate: %.2f, %.2f, %.2f \n", X, Y, Z);
     
     vector<pair<string, string>> timestamps;
     vector<pair<Vector3f, Quaternionf>> odometries;

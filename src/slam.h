@@ -44,6 +44,7 @@ const size_t landmarkDim = 3;
 const size_t measurementDim = 2;
 const size_t imgHeight = 480;
 const size_t imgWidth = 640;
+const size_t imgEdge = 0;
 
 // camera, landmark, measurement idx
 class CLM {
@@ -95,8 +96,9 @@ struct ReprojectionError {
                   T* residuals) const {
         T p[3];
         ceres::QuaternionRotatePoint(camera, point, p); // rotation
-        p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
-        // cout << "p: " << p[0] << ", " << p[1] << ", " << p[2] << endl;
+        // cout << "rotated p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
+        // p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
+        // cout << "final p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
 
         T xp = point[0] / point[2];
         T yp = point[1] / point[2];
@@ -104,11 +106,11 @@ struct ReprojectionError {
         T predicted_y = yp * T(fy) + T(cy);
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
-        if (predicted_x >= T(imgWidth) || predicted_x < T(0) || predicted_y >= T(imgHeight) || predicted_y < T(0)) {
-            printf("landmark outside range: \n");
-            cout << predicted_x << ", " << predicted_y << endl;
-            cout << xp << ", " <<  T(fx) << ", " <<  T(cx) << endl;
-            cout << yp << ", " <<  T(fy) << ", " << T(cy) << endl;
+        if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
+            // printf("landmark outside range: \n");
+            // cout << predicted_x << ", " << predicted_y << endl;
+            // cout << xp << ", " <<  T(fx) << ", " <<  T(cx) << endl;
+            // cout << yp << ", " <<  T(fy) << ", " << T(cy) << endl;
             residuals[0] = T(0);
             residuals[1] = T(0);
         }
@@ -135,6 +137,8 @@ public:
     bool optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     void displayCLMS();
     void displayPosesAndLandmarkcs();
+    void imgToWorld_(double* camera, const int& x, const int& y, const int& z,
+                 float* X_ptr, float* Y_ptr, float* Z_ptr);
 
 private:
     FeatureTracker feature_tracker;
@@ -150,8 +154,11 @@ private:
     int clmsFind_(const CLM& clm);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
-    void imgToWorld_(double* camera, const size_t& u, const size_t& v, const Mat& depth,
+    void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
+    void wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+                     float* x_ptr, float* y_ptr);
+    
 
 };
 
