@@ -34,7 +34,10 @@ int main() {
 
     // slam.displayCLMS();
     slam.displayPosesAndLandmarkcs();
-    slam.optimize(false, true, false);
-    slam.displayPosesAndLandmarkcs();
+    if (slam.optimize(false, true, false)) {
+        slam.displayPosesAndLandmarkcs();
+    } else {
+        printf("optimization failed\n");
+    }
     
 }

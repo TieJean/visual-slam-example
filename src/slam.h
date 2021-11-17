@@ -127,9 +127,7 @@ public:
     void init();
     void observeImage(const Mat& img, const Mat& depth);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
-    void optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
-    vector<pair<Vector3f, Quaternionf>>& getPoses();
-    vector<Vector3f>& getLandmarks();
+    bool optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     void displayCLMS();
     void displayPosesAndLandmarkcs();
 
@@ -138,10 +136,10 @@ private:
     Vector3f prev_odom_loc_;
     Quaternionf prev_odom_angle_;
     bool has_new_pose_;
+    size_t t_start;
     vector<double*> poses;
     vector<double*> landmarks;
     vector<CLM> clms;
-    // vector<SolverInput> inputs;
     vector<pair<vector<KeyPoint>, Mat>> features;
 
     int clmsFind_(const CLM& clm);

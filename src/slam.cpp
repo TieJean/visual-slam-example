@@ -56,7 +56,7 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
             clm.setMeasurement(kp[match.trainIdx]);
             clm_curr.setPoseIdx(T);
             clm_curr.setMeasurement(kp[match.queryIdx]);
-            idx = clmsFind_(clm);
+            idx = clmsFind_(clm); // TODO: don't use hash for debugging; need to change back to hash
             if (idx != -1) {
                 clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
             } else {
@@ -85,7 +85,7 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // }
 }
 
-void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport) {
+bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport) {
     Problem problem;
     for (size_t i = 0; i < clms.size(); ++i) {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
@@ -99,6 +99,8 @@ void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     ceres::Solve(options, &problem, &summary);
     if (briefReport) std::cout << summary.FullReport() << "\n";
     if (fullReport)  std::cout << summary.BriefReport() << "\n";
+    return (summary.termination_type == ceres::CONVERGENCE 
+         || summary.termination_type == ceres::USER_SUCCESS);
 }
 
 void Slam::displayCLMS() {
