@@ -147,7 +147,7 @@ public:
     vector<pair<Vector3f, Quaternionf>>& getPoses();
     vector<Vector3f>& getLandmarks();
     void displayInputs();
-    // void displayPosesAndLandmarks();
+    void displayPosesAndLandmarkcs();
 
 private:
     FeatureTracker feature_tracker;

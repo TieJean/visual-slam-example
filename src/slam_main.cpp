@@ -22,7 +22,7 @@ int main() {
     for (size_t i = 0; i < timestamps.size(); ++i) {
         slam.observeOdometry(odometries[i].first, odometries[i].second);
         Mat img = imread("../data/rgb/" + timestamps[i].first + ".png", 0);
-        Mat depth = imread("../data/depth/" + timestamps[i].second + ".png", -1);
+        Mat depth = imread("../data/depth/" + timestamps[i].second + ".png", IMREAD_UNCHANGED);
         if (img.data == NULL || depth.data == NULL) {
             cout << "../data/rgb/" + timestamps[i].first + ".png" << endl;
             cout << "../data/depth/" + timestamps[i].second + ".png" << endl;
@@ -31,7 +31,10 @@ int main() {
         }
         slam.observeImage(img, depth);
     }
-    slam.displayInputs();
-    // slam.optimize(false, true, false);
+
+    // slam.displayInputs();
+    // slam.displayPosesAndLandmarkcs();
+    slam.optimize(false, true, false);
+    // slam.displayPosesAndLandmarkcs();
     
 }

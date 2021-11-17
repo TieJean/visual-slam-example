@@ -72,12 +72,12 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
 }
 
 void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle) {
-    if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
+    // if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
         poses.emplace_back(prev_odom_loc_, prev_odom_angle_);
         has_new_pose_ = true; 
-    }
+    // }
 }
 
 vector<pair<Vector3f, Quaternionf>>& Slam::getPoses() { return poses; }
@@ -101,10 +101,44 @@ void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
 void Slam::displayInputs() {
     printf("-------display inputs---------\n");
     for (size_t i = 0; i < inputs.size(); ++i) {
+        printf("%ld ", i);
         printf("camera: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             inputs[i].pose[0], inputs[i].pose[1], inputs[i].pose[2], inputs[i].pose[3],
             inputs[i].pose[4], inputs[i].pose[5], inputs[i].pose[6]);
-        printf("landmark: %.2f | %.2f | %.2f | %.2f\n", inputs[i].landmark[0], inputs[i].landmark[1], inputs[i].landmark[2], inputs[i].landmark[3]);
+        printf("landmark: %.2f | %.2f | %.2f \n", inputs[i].landmark[0], inputs[i].landmark[1], inputs[i].landmark[2]);
+    }
+}
+
+bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
+    for (auto v : vec) {
+        bool ret = true;
+        for (size_t i = 0; i < size; ++i) {
+            ret &= (v[i] == elt[i]);
+        }
+        if (ret) {return true;}
+    }
+    return false;
+}
+
+void Slam::displayPosesAndLandmarkcs() {
+    vector<double*> xs;
+    vector<double*> ls;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        if (!vectorContains_(xs, inputs[i].pose, 7)) {
+            xs.push_back(inputs[i].pose);
+        }
+        if (!vectorContains_(ls, inputs[i].landmark, 3)) {
+            ls.push_back(inputs[i].landmark);
+        }
+    }
+    printf("----------poses----------\n");
+    for (size_t i = 0; i < xs.size(); ++i) {
+        printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            i, xs[i][0], xs[i][1], xs[i][2], xs[i][3], xs[i][4], xs[i][5], xs[i][6]);
+    }
+    printf("----------landmarks----------\n");
+    for (size_t i = 0; i < ls.size(); ++i) {
+        printf("%ld: %.2f | %.2f | %.2f \n", i, ls[i][0], ls[i][1], ls[i][2]);
     }
 }
 
@@ -133,9 +167,9 @@ void Slam::imgToWorld_(const size_t& x, const size_t& y, const Mat& depth,
     float &Y = *Y_ptr;
     float &Z = *Z_ptr;
 
-    float factor = 5000;
+    float factor = 5000.0;
 
-    Z = depth.at<float>(y, x) / factor;
+    Z = (depth.at<ushort>(y, x)) / factor;
     X = (x - cx) * Z / fx;
     Y = (Y - cy) * Z / fy;
 }
