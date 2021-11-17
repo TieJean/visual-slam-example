@@ -19,21 +19,12 @@ Slam::Slam() :
     prev_odom_loc_(0.0,0.0,0.0),
     prev_odom_angle_(0.0,0.0,0.0,0.0),
     has_new_pose_(false) {
-        // poses = new vector<pair<Vector3f, Quaternionf>>();
-        // landmarks = new vector<Vector3f>();
-        // observations = new vector<Vector2f>();
-        // lp_map = new vector<vector<int>>();
-        // vector<pair<vector<KeyPoint>, Mat>> features;
     }
 
 void Slam::init() {
     poses.clear();
-    landmarks.clear();
-    // observations.clear();
-    measurements.clear();
-    lp_map.clear();
+    inputs.clear();
     features.clear();
-    added_keypoints.clear();
 }
 
 void Slam::observeImage(const Mat& img, const Mat& depth) {
@@ -50,50 +41,34 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
     vector<KeyPoint> kp;
     Mat des;
     vector<DMatch> matches;
-    struct TimeKp timeKp, timeKp_curr;
-    size_t T = features.size() - 1;
-    timeKp_curr.t = T;
 
+    int idx, x, y;
+    float X, Y, Z;
+    size_t T = features.size() - 1;
     for (size_t t = 0; t < T; ++t) {
         kp = features[t].first;
         des = features[t].second;
-        // des_curr: query; des: train
         feature_tracker.match(des_curr, des, &matches);
         for (auto match : matches) {
-            timeKp.t = t;
-            timeKp.kp = kp[match.trainIdx];
-            timeKp_curr.kp = kp_curr[match.queryIdx];
-            int x = kp[match.trainIdx].pt.x;
-            int y = kp[match.trainIdx].pt.y;
-            if (added_keypoints.contains(timeKp)) {
-                added_keypoints[timeKp_curr] = added_keypoints[timeKp];
-                // added_keypoints[timeKp] - landmark; t - new pose
-                lp_map[added_keypoints[timeKp]].push_back(t);
-                // observations[pair<int, int>(added_keypoints[timeKp], T)] = Vector2f(x, y);
-                continue;
+            SolverInput input, input_curr;
+            input.setPose(poses[t]);
+            input.setKeyPoint(kp[match.trainIdx]);
+            input_curr.setPose(poses[T]);
+            input_curr.setKeyPoint(kp[match.trainIdx]);
+            idx = inputsFind_(input);
+            if (idx != -1) {
+                input_curr.setLandmark(inputs[idx].landmark);
+            } else {
+                x = kp[match.trainIdx].pt.x;
+                y = kp[match.trainIdx].pt.y;
+                imgToWorld_(x, y, depth, &X, &Y, &Z);
+                input.setLandmark(X, Y, Z);
+                input_curr.setLandmark(X, Y, Z);
+                inputs.push_back(input);
             }
-            
-            // in opencv, keypoints are not in image coordinate
-            
-            // observations[pair<int, int>(landmarks.size()-1, t)] = Vector2f(x, y);
-            // observations[pair<int, int>(landmarks.size()-1, T)] = Vector2f(x, y);
-            measurements.emplace_back(x, y);
-            float X, Y, Z;
-            imgToWorld_(x, y, depth, &X, &Y, &Z);
-            landmarks.emplace_back(X, Y, Z);
-            added_keypoints[timeKp]      = landmarks.size() - 1;
-            added_keypoints[timeKp_curr] = landmarks.size() - 1;
-            // TODO: do i need to initialize vector??
-            if (lp_map.size() < landmarks.size()) { lp_map.resize(landmarks.size()); }
-            lp_map[landmarks.size() - 1].push_back(t);
-            lp_map[landmarks.size() - 1].push_back(T);
-            // if (landmarks.size() == 5) {
-            //     cout << added_keypoints[timeKp] << endl;
-            //     cout << added_keypoints[timeKp] << endl;
-            // }
+            inputs.push_back(input_curr);
         }
     }
-
 }
 
 void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle) {
@@ -107,77 +82,11 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
 
 vector<pair<Vector3f, Quaternionf>>& Slam::getPoses() { return poses; }
 
-vector<Vector3f>& Slam::getLandmarks() {return landmarks; }
-
 void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport) {
-    // for (size_t i = 0; i < lp_map.size(); ++i) {
-    //     cout << i << ": ";
-    //     for (size_t j = 0; j < lp_map[i].size(); ++j) {
-    //         cout << lp_map[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-
     Problem problem;
-    // double** opt_poses = new double*[poses.size()];
-    // double** opt_landmarks = new double*[landmarks.size()];
-    // for (size_t i = 0; i < poses.size(); ++i) {
-    //     opt_poses[i] = new double[7];
-    // }
-    // for (size_t i = 0; i < landmarks.size(); ++i) {
-    //     opt_landmarks[i] = new double[3];
-    // }
-
-    // for (size_t i = 0; i < poses.size(); ++i) {
-    //     opt_poses[i][0]     = poses[i].first.x();
-    //     opt_poses[i][1]     = poses[i].first.y();
-    //     opt_poses[i][2]     = poses[i].first.z();
-    //     opt_poses[i][3]     = poses[i].second.w();
-    //     opt_poses[i][4]     = poses[i].second.x();
-    //     opt_poses[i][5]     = poses[i].second.y();
-    //     opt_poses[i][6]     = poses[i].second.z();
-    // }
-    // for (size_t i = 0; i < landmarks.size(); ++i) {
-    //     opt_landmarks[i][0] = landmarks[i].x();
-    //     opt_landmarks[i][1] = landmarks[i].y();
-    //     opt_landmarks[i][2] = landmarks[i].z();
-    // }
-    // double* observations_x = new double[observations.size()];
-    // double* observations_y = new double[observations.size()];
-    // for (size_t i = 0; i < observations.size(); ++i) {
-    //     observations_x[i] = observations[i].x();
-    //     observations_y[i] = observations[i].y();
-    // }
-/*
-    for (size_t i = 0; i < landmarks.size(); ++i) {
-        if (i >= 27) {continue;}
-        for (size_t j = 0; j < lp_map[i].size(); ++j) {
-            if (!observations.contains(pair<int,int>(i,j))) { continue;}
-            Vector2f obs = observations[pair<int,int>(i,j)];
-            CostFunction* cost_function = ReprojectionError::Create(obs.x(), obs.y());
-            if (lp_map[i][j] < 0 || lp_map[i][j] >= poses.size() || j >= 1) { 
-                continue;
-            }
-            // cout << lp_map[i].size() << endl;
-            // problem.AddResidualBlock(cost_function, NULL, opt_poses[lp_map[i][j]], opt_landmarks[i]);
-            cout << landmarks.size() << ": " << i << endl;
-        }
-        // double camera[] = {poses[i].first.x(),  poses[i].first.y(),  poses[i].first.z(),
-        //                    poses[i].second.w(), poses[i].second.x(), poses[i].second.y(), poses[i].second.z()};
-        // double point[] = {landmarks[i].x(), landmarks[i].y(), landmarks[i].z()};
-        // NULL - least square loss
-        
-        // poses[i] = pair<Vector3f, Quaternionf>(Vector3f(camera[0], camera[1], camera[2]),
-        //                                       Quaternionf(camera[3], camera[4], camera[5], camera[6])); 
-        // landmarks[i] = Vector3f(point[0], point[1], point[2]);
-    }
-    */
-    for (size_t i = 0; i < landmarks.size(); ++i) {
-        CostFunction* cost_function = ReprojectionError::Create(measurements[i].x(), measurements[i].y());
-        double camera[] = {poses[i].first.x(),  poses[i].first.y(),  poses[i].first.z(),
-                           poses[i].second.w(), poses[i].second.x(), poses[i].second.y(), poses[i].second.z()};
-        double point[] = {landmarks[i].x(), landmarks[i].y(), landmarks[i].z()};
-        problem.AddResidualBlock(cost_function, NULL, camera, point);
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        CostFunction* cost_function = ReprojectionError::Create(inputs[i].measurement[0], inputs[i].measurement[1]);
+        problem.AddResidualBlock(cost_function, NULL, inputs[i].pose, inputs[i].landmark);
     }
 
     Solver::Options options;
@@ -187,22 +96,24 @@ void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     ceres::Solve(options, &problem, &summary);
     if (briefReport) std::cout << summary.FullReport() << "\n";
     if (fullReport)  std::cout << summary.BriefReport() << "\n";
-    // for (size_t i = 0; i < landmarks.size(); ++i) {
-    //     poses[i] = pair<Vector3f, Quaternionf>(Vector3f(opt_poses[i][0],    opt_poses[i][1], opt_poses[i][2]),
-    //                                            Quaternionf(opt_poses[i][3], opt_poses[i][4], opt_poses[i][5], opt_poses[i][6])); 
-    //     landmarks[i] = Vector3f(opt_landmarks[i][0], opt_landmarks[i][1], opt_landmarks[i][2]);
-    // }
-    // for (size_t i = 0; i < poses.size(); ++i) {
-    //     delete[] opt_poses[i];
-    // }
-    // for (size_t i = 0; i < landmarks.size(); ++i) {
-    //     delete[] opt_landmarks[i];
-    // }
-    // delete opt_poses;
-    // delete opt_landmarks;
-    // delete observations_x;
-    // delete observations_y;
-    
+}
+
+void Slam::displayInputs() {
+    printf("-------display inputs---------\n");
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        printf("camera: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            inputs[i].pose[0], inputs[i].pose[1], inputs[i].pose[2], inputs[i].pose[3],
+            inputs[i].pose[4], inputs[i].pose[5], inputs[i].pose[6]);
+        printf("landmark: %.2f | %.2f | %.2f | %.2f\n", inputs[i].landmark[0], inputs[i].landmark[1], inputs[i].landmark[2], inputs[i].landmark[3]);
+    }
+}
+
+
+int Slam::inputsFind_(const SolverInput& input) {
+    for (int i = 0; i < inputs.size(); ++i) {
+        if (input == inputs[i]) {return i;}
+    }
+    return -1;
 }
 
 Quaternionf Slam::getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2) {
@@ -228,5 +139,7 @@ void Slam::imgToWorld_(const size_t& x, const size_t& y, const Mat& depth,
     X = (x - cx) * Z / fx;
     Y = (Y - cy) * Z / fy;
 }
+
+
 
 }

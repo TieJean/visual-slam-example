@@ -25,50 +25,67 @@ using namespace feature_tracker;
 
 namespace slam {
 
-struct TimeKp {
-    size_t t;
-    KeyPoint kp; 
+const float kEpsilon = 1e-4;
 
-    TimeKp() {}
-
-    TimeKp(int t, KeyPoint kp) : t(t), kp(kp) {}
-
-    bool operator==(const TimeKp &other) const
-    { return (t == other.t
-           && kp.pt.x == other.kp.pt.x
-           && kp.pt.y == other.kp.pt.y);
+class SolverInput {
+public:
+    double* pose;
+    double* landmark;
+    double* measurement;
+    
+    SolverInput() {
+        pose = new double[7];
+        landmark = new double[3];
+        measurement = new double[2];
     }
-};
-
-struct TimeKpHash
-{
-    std::size_t operator()(const TimeKp& p) const noexcept
-    {
-        size_t h0 = hash<size_t>{}(p.t); 
-        size_t h1 = hash<int>{}(p.kp.pt.x);
-        size_t h2 = hash<int>{}(p.kp.pt.y);
-        return h0 ^ (h1 << 1) ^ (h2 >> 1);
+    ~SolverInput() {
+        // if (pose != nullptr) {delete pose;}
+        // if (landmark != nullptr) {delete landmark;}
+        // if (measurement != nullptr) {delete measurement;}
     }
-};
 
-struct LP {
-    size_t landmark;
-    size_t pose;
-    LP() {}
-    LP(size_t landmark, size_t pose) : landmark(landmark), pose(pose) {}
-    bool operator==(const LP &other) const
-    { return (landmark == other.landmark
-           && pose     == other.pose);
+    bool operator==(const SolverInput& other) const {
+        bool ret = true;
+        for (size_t i = 0; i < 7; ++i) {
+            if (this->pose[i] != other.pose[i]) {return false;}
+        }
+        for (size_t i = 0; i < 2; ++i) {
+            if (this->measurement[i] != other.measurement[i]) {return false;}
+        }
     }
-};
 
-struct LPHash
-{
-    std::size_t operator()(const pair<int, int>& p) const noexcept
-    {
-        size_t h0 = hash<int>{}(p.first);
-        size_t h1 = hash<int>{}(p.second);
-        return h0 ^ (h1 << 1);
+    void setPose(const pair<Vector3f, Quaternionf>& pose) {
+        // if (this->pose == nullptr) {this->pose = new double[7];}
+        this->pose[0] = pose.first.x();
+        this->pose[1] = pose.first.y();
+        this->pose[2] = pose.first.z();
+        this->pose[3] = pose.second.w();
+        this->pose[4] = pose.second.x();
+        this->pose[5] = pose.second.y();
+        this->pose[6] = pose.second.z();
+    }
+
+    void setLandmark(double* landmark) {
+        this->landmark[0] = landmark[0];
+        this->landmark[1] = landmark[1];
+        this->landmark[2] = landmark[2];
+    }
+
+    void setLandmark(const Vector3f& landmark) {
+        this->landmark[0] = landmark.x();
+        this->landmark[1] = landmark.y();
+        this->landmark[2] = landmark.z();
+    }
+
+    void setLandmark(const float& X, const float& Y, const float& Z) {
+        this->landmark[0] = X;
+        this->landmark[1] = Y;
+        this->landmark[2] = Z;
+    }
+
+    void setKeyPoint(const KeyPoint& kp) {
+        this->measurement[0] = kp.pt.x;
+        this->measurement[1] = kp.pt.y;
     }
 };
 
@@ -129,29 +146,22 @@ public:
     void optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     vector<pair<Vector3f, Quaternionf>>& getPoses();
     vector<Vector3f>& getLandmarks();
+    void displayInputs();
+    // void displayPosesAndLandmarks();
 
 private:
     FeatureTracker feature_tracker;
     Vector3f prev_odom_loc_;
     Quaternionf prev_odom_angle_;
-    bool odom_initialized_;
-    bool pose_initialized_;
-    bool landmark_initialized_;
     bool has_new_pose_;
     vector<pair<Vector3f, Quaternionf>> poses;
-    vector<Vector3f> landmarks;
-    // vector<Vector2f> observations;
-    // unordered_map<pair<int, int>, Vector2f, LPHash> observations;
-    vector<Vector2f> measurements;
-    // lp_map[i]: for ith landmarks, all cameras it has appearred on 
-    vector<vector<int>> lp_map;
+    vector<SolverInput> inputs;
     vector<pair<vector<KeyPoint>, Mat>> features;
-    // TimeKp : landmark
-    unordered_map<TimeKp, int, TimeKpHash> added_keypoints;
 
     float MIN_DELTA_D = 0.5;
     float MIN_DELTA_A = 0.8;
 
+    int inputsFind_(const SolverInput& input);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
     void imgToWorld_(const size_t& u, const size_t& v, const Mat& depth,
