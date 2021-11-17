@@ -7,6 +7,16 @@ using namespace std;
 using namespace slam;
 
 int main() {
+
+    // ReprojectionError reprojection(cx, cy);
+    // double camera_test[] = {0, 0, 0, 1.0, 0.5, 0.5, 0.0};
+    // double point_test[]  = {0, 0, 1};
+    // double residual[2];
+    // cout << "camera: " << camera_test[0] << ", " << camera_test[1] << ", " << camera_test[2] << ", " << camera_test[3] 
+    //         << ", " << camera_test[4] << ", " << camera_test[5] << ", " << camera_test[6] << endl;
+    // cout << "point: " <<point_test[0] << ", " << point_test[1] << ", " << point_test[2] << endl;
+    // reprojection(camera_test, point_test, residual);
+    
     
     vector<pair<string, string>> timestamps;
     vector<pair<Vector3f, Quaternionf>> odometries;
@@ -32,7 +42,7 @@ int main() {
         slam.observeImage(img, depth);
     }
 
-    // slam.displayCLMS();
+    slam.displayCLMS();
     slam.displayPosesAndLandmarkcs();
     if (slam.optimize(false, true, false)) {
         slam.displayPosesAndLandmarkcs();

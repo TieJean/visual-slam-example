@@ -62,7 +62,7 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
             } else {
                 x = kp[match.trainIdx].pt.x;
                 y = kp[match.trainIdx].pt.y;
-                imgToWorld_(x, y, depth, &X, &Y, &Z);
+                imgToWorld_(poses[t], x, y, depth, &X, &Y, &Z);
                 clm.setLandmarkIdx(landmarks.size());
                 clms.push_back(clm);
                 clm_curr.setLandmarkIdx(landmarks.size());
@@ -156,17 +156,22 @@ float Slam::getDist_(const Vector3f& odom1, const Vector3f& odom2) {
     return sqrt( x_pow + y_pow + z_pow);
 }
 
-void Slam::imgToWorld_(const size_t& x, const size_t& y, const Mat& depth,
+void Slam::imgToWorld_(double* camera, const size_t& x, const size_t& y, const Mat& depth,
                  float* X_ptr, float* Y_ptr, float* Z_ptr) {
     float &X = *X_ptr;
     float &Y = *Y_ptr;
     float &Z = *Z_ptr;
 
-    float factor = 5000.0;
+    const float factor = 5000.0;
 
     Z = (depth.at<ushort>(y, x)) / factor;
     X = (x - cx) * Z / fx;
     Y = (Y - cy) * Z / fy;
+    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    Vector3f landmark_trans = r.inverse() * Vector3f(X - camera[4], Y - camera[5], Z - camera[6]);
+    X = landmark_trans.x();
+    Y = landmark_trans.y();
+    Z = landmark_trans.z();
 }
 
 
