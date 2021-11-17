@@ -65,7 +65,13 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                     clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
                     clms.push_back(clm_curr);
                 } else {
-                    // printf("\n", poses[t], )
+                    printf("---------why you're out of range?? (case1)------------\n");
+                    printf("pose:         %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", poses[t][0], poses[t][1], poses[t][2], poses[t][3], poses[t][4], poses[t][5], poses[t][6]);
+                    printf("pose_cur:     %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", poses[T][0], poses[T][1], poses[T][2], poses[T][3], poses[T][4], poses[T][5], poses[T][6]);
+                    printf("landmark:     %.2f|%.2f|%.2f\n", landmarks[clms[idx].landmarkIdx][0], landmarks[clms[idx].landmarkIdx][1], landmarks[clms[idx].landmarkIdx][2]);
+                    printf("measure:      %.2f|%.2f\n", kp[match.trainIdx].pt.x, kp[match.trainIdx].pt.y);
+                    printf("measure_cur:  %.2f|%.2f\n", kp[match.queryIdx].pt.x, kp[match.queryIdx].pt.y);
+                    printf("measure_pred: %.2f|%.2f\n", predicted_x, predicted_y);
                 }
             } else {
                 x = kp[match.trainIdx].pt.x;
@@ -91,8 +97,8 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
-        double* pose = new double[]{odom_loc.x(), odom_loc.y(), odom_loc.z(), 
-                         odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z()};
+        double* pose = new double[]{odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
+                                    odom_loc.x(), odom_loc.y(), odom_loc.z()};
         poses.push_back(pose);
         has_new_pose_ = true; 
     // }
@@ -102,6 +108,12 @@ bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     Problem problem;
     for (size_t i = 0; i < clms.size(); ++i) {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
+        // double* pose = poses[clms[i].poseIdx];
+        // Quaterniond rotate = Quaterniond(pose[0], pose[1], pose[2], pose[3]).inverse();
+        // poses[clms[i].poseIdx][0] = rotate.w();
+        // poses[clms[i].poseIdx][1] = rotate.x();
+        // poses[clms[i].poseIdx][2] = rotate.y();
+        // poses[clms[i].poseIdx][3] = rotate.z();
         problem.AddResidualBlock(cost_function, NULL, poses[clms[i].poseIdx], landmarks[clms[i].landmarkIdx]);
     }
 
@@ -184,8 +196,8 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& de
     Z = (depth.at<ushort>(y, x)) / factor;
     X = (x - cx) * Z / fx;
     Y = (Y - cy) * Z / fy;
-    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
-    Vector3f landmark_trans = r.inverse() * Vector3f(X - camera[4], Y - camera[5], Z - camera[6]);
+    // Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
+    Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
     X = landmark_trans.x();
     Y = landmark_trans.y();
     Z = landmark_trans.z();
@@ -202,10 +214,10 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     Z = z / factor;
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
-    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
-    Vector3f landmark_trans = r.inverse() * Vector3f(X - camera[4], Y - camera[5], Z - camera[6]);
-    printf("imgToWorld_: %.2f, %.2f, %.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", 
-        X, Y, Z, X - camera[4], Y - camera[5], Z - camera[6], landmark_trans.x(), landmark_trans.y(), landmark_trans.z());
+    // Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
+    Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
+    // printf("imgToWorld_: %.2f, %.2f, %.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", 
+    //     X, Y, Z, X - camera[4], Y - camera[5], Z - camera[6], landmark_trans.x(), landmark_trans.y(), landmark_trans.z());
     X = landmark_trans.x();
     Y = landmark_trans.y();
     Z = landmark_trans.z();
@@ -217,11 +229,17 @@ bool Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const flo
     float &y = *y_ptr;
 
     Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    // Vector3f rotated = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z);
     Vector3f measurement = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
+    // Vector3f measurement = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
     float xp = measurement.x() / measurement.z();
     float yp = measurement.y() / measurement.z();
     x = xp * fx + cx;
-    y = yp + fy + cy;
+    y = yp * fy + cy;
+
+    // printf("wolrdToImg_(camera):  %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f%\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+    // printf("wolrdToImg_(compute): %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", X, Y, Z, rotated.x(), rotated.y(), rotated.z(), rotated.x(), measurement.y(), measurement.z());
+
     return (x < (float)(imgWidth + imgEdge)) && (x >= (float)(-imgEdge)) && (y <= (float)(imgHeight + imgEdge)) && (y > (float)(-imgEdge));
 }
 

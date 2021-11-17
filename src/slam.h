@@ -97,17 +97,17 @@ struct ReprojectionError {
         T p[3];
         ceres::QuaternionRotatePoint(camera, point, p); // rotation
         // cout << "rotated p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
-        // p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
+        p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
         // cout << "final p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
 
-        T xp = point[0] / point[2];
-        T yp = point[1] / point[2];
+        T xp = p[0] / p[2];
+        T yp = p[1] / p[2];
         T predicted_x = xp * T(fx) + T(cx);
         T predicted_y = yp * T(fy) + T(cy);
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
         if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
-            // printf("landmark outside range: \n");
+            printf("landmark outside range: \n");
             // cout << predicted_x << ", " << predicted_y << endl;
             // cout << xp << ", " <<  T(fx) << ", " <<  T(cx) << endl;
             // cout << yp << ", " <<  T(fy) << ", " << T(cy) << endl;
@@ -139,6 +139,8 @@ public:
     void displayPosesAndLandmarkcs();
     void imgToWorld_(double* camera, const int& x, const int& y, const int& z,
                  float* X_ptr, float* Y_ptr, float* Z_ptr);
+    bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+                     float* x_ptr, float* y_ptr);
 
 private:
     FeatureTracker feature_tracker;
@@ -156,8 +158,8 @@ private:
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
     void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
-    bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
-                     float* x_ptr, float* y_ptr);
+    // bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+    //                  float* x_ptr, float* y_ptr);
     
 
 };
