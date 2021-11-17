@@ -26,69 +26,8 @@ using namespace feature_tracker;
 namespace slam {
 
 const float kEpsilon = 1e-4;
-
-class SolverInput {
-public:
-    double* pose;
-    double* landmark;
-    double* measurement;
-    
-    SolverInput() {
-        pose = new double[7];
-        landmark = new double[3];
-        measurement = new double[2];
-    }
-    ~SolverInput() {
-        // if (pose != nullptr) {delete pose;}
-        // if (landmark != nullptr) {delete landmark;}
-        // if (measurement != nullptr) {delete measurement;}
-    }
-
-    bool operator==(const SolverInput& other) const {
-        bool ret = true;
-        for (size_t i = 0; i < 7; ++i) {
-            if (this->pose[i] != other.pose[i]) {return false;}
-        }
-        for (size_t i = 0; i < 2; ++i) {
-            if (this->measurement[i] != other.measurement[i]) {return false;}
-        }
-    }
-
-    void setPose(const pair<Vector3f, Quaternionf>& pose) {
-        // if (this->pose == nullptr) {this->pose = new double[7];}
-        this->pose[0] = pose.first.x();
-        this->pose[1] = pose.first.y();
-        this->pose[2] = pose.first.z();
-        this->pose[3] = pose.second.w();
-        this->pose[4] = pose.second.x();
-        this->pose[5] = pose.second.y();
-        this->pose[6] = pose.second.z();
-    }
-
-    void setLandmark(double* landmark) {
-        this->landmark[0] = landmark[0];
-        this->landmark[1] = landmark[1];
-        this->landmark[2] = landmark[2];
-    }
-
-    void setLandmark(const Vector3f& landmark) {
-        this->landmark[0] = landmark.x();
-        this->landmark[1] = landmark.y();
-        this->landmark[2] = landmark.z();
-    }
-
-    void setLandmark(const float& X, const float& Y, const float& Z) {
-        this->landmark[0] = X;
-        this->landmark[1] = Y;
-        this->landmark[2] = Z;
-    }
-
-    void setKeyPoint(const KeyPoint& kp) {
-        this->measurement[0] = kp.pt.x;
-        this->measurement[1] = kp.pt.y;
-    }
-};
-
+const float MIN_DELTA_D = 0.5;
+const float MIN_DELTA_A = 0.8;
 const float fx = 520.9;
 const float fy = 521.0;
 const float cx = 325.1;
@@ -99,6 +38,51 @@ const float d2 = -0.0033;
 const float d3 = -0.0001;
 const float d4 = 0.9172;
 const float ds = 1.031;
+
+const size_t poseDim = 7;
+const size_t landmarkDim = 3;
+const size_t measurementDim = 2;
+
+// camera, landmark, measurement idx
+class CLM {
+public:
+    size_t poseIdx;
+    size_t landmarkIdx;
+    double* measurement;
+
+    CLM() {
+        measurement = new double[measurementDim];
+    }
+
+    ~CLM() {
+
+    }
+
+    void setPoseIdx(size_t poseIdx) {
+        this->poseIdx = poseIdx;
+    }
+
+    void setLandmarkIdx(size_t landmarkIdx) {
+        this->landmarkIdx = landmarkIdx;
+    }
+
+    void setMeasurement(KeyPoint kp) {
+        this->measurement[0] = kp.pt.x;
+        this->measurement[1] = kp.pt.y;
+    }
+
+    void setMeasurement(double* measurement) {
+        for (size_t i = 0; i < measurementDim; ++i) {
+            this->measurement[i] = measurement[i];
+        }
+    }
+
+    bool operator==(const CLM& other) const {
+        return poseIdx == other.poseIdx 
+            && measurement[0] == other.measurement[0]
+            && measurement[1] == other.measurement[1];
+    }
+};
 
 struct ReprojectionError {
     float observed_x;
@@ -146,7 +130,7 @@ public:
     void optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     vector<pair<Vector3f, Quaternionf>>& getPoses();
     vector<Vector3f>& getLandmarks();
-    void displayInputs();
+    void displayCLMS();
     void displayPosesAndLandmarkcs();
 
 private:
@@ -154,14 +138,13 @@ private:
     Vector3f prev_odom_loc_;
     Quaternionf prev_odom_angle_;
     bool has_new_pose_;
-    vector<pair<Vector3f, Quaternionf>> poses;
-    vector<SolverInput> inputs;
+    vector<double*> poses;
+    vector<double*> landmarks;
+    vector<CLM> clms;
+    // vector<SolverInput> inputs;
     vector<pair<vector<KeyPoint>, Mat>> features;
 
-    float MIN_DELTA_D = 0.5;
-    float MIN_DELTA_A = 0.8;
-
-    int inputsFind_(const SolverInput& input);
+    int clmsFind_(const CLM& clm);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
     void imgToWorld_(const size_t& u, const size_t& v, const Mat& depth,

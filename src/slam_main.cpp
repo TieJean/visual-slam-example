@@ -32,9 +32,9 @@ int main() {
         slam.observeImage(img, depth);
     }
 
-    // slam.displayInputs();
-    // slam.displayPosesAndLandmarkcs();
+    // slam.displayCLMS();
+    slam.displayPosesAndLandmarkcs();
     slam.optimize(false, true, false);
-    // slam.displayPosesAndLandmarkcs();
+    slam.displayPosesAndLandmarkcs();
     
 }

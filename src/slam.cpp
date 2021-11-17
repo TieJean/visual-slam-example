@@ -23,7 +23,8 @@ Slam::Slam() :
 
 void Slam::init() {
     poses.clear();
-    inputs.clear();
+    landmarks.clear();
+    clms.clear();
     features.clear();
 }
 
@@ -50,23 +51,25 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
         des = features[t].second;
         feature_tracker.match(des_curr, des, &matches);
         for (auto match : matches) {
-            SolverInput input, input_curr;
-            input.setPose(poses[t]);
-            input.setKeyPoint(kp[match.trainIdx]);
-            input_curr.setPose(poses[T]);
-            input_curr.setKeyPoint(kp[match.trainIdx]);
-            idx = inputsFind_(input);
+            CLM clm, clm_curr;
+            clm.setPoseIdx(t);
+            clm.setMeasurement(kp[match.trainIdx]);
+            clm_curr.setPoseIdx(T);
+            clm_curr.setMeasurement(kp[match.queryIdx]);
+            idx = clmsFind_(clm);
             if (idx != -1) {
-                input_curr.setLandmark(inputs[idx].landmark);
+                clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
             } else {
                 x = kp[match.trainIdx].pt.x;
                 y = kp[match.trainIdx].pt.y;
                 imgToWorld_(x, y, depth, &X, &Y, &Z);
-                input.setLandmark(X, Y, Z);
-                input_curr.setLandmark(X, Y, Z);
-                inputs.push_back(input);
+                clm.setLandmarkIdx(landmarks.size());
+                clms.push_back(clm);
+                clm_curr.setLandmarkIdx(landmarks.size());
+                double* landmark = new double[]{X, Y, Z};
+                landmarks.push_back(landmark);
             }
-            inputs.push_back(input_curr);
+            clms.push_back(clm_curr);
         }
     }
 }
@@ -75,18 +78,18 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
-        poses.emplace_back(prev_odom_loc_, prev_odom_angle_);
+        double* pose = new double[]{odom_loc.x(), odom_loc.y(), odom_loc.z(), 
+                         odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z()};
+        poses.push_back(pose);
         has_new_pose_ = true; 
     // }
 }
 
-vector<pair<Vector3f, Quaternionf>>& Slam::getPoses() { return poses; }
-
 void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport) {
     Problem problem;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        CostFunction* cost_function = ReprojectionError::Create(inputs[i].measurement[0], inputs[i].measurement[1]);
-        problem.AddResidualBlock(cost_function, NULL, inputs[i].pose, inputs[i].landmark);
+    for (size_t i = 0; i < clms.size(); ++i) {
+        CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
+        problem.AddResidualBlock(cost_function, NULL, poses[clms[i].poseIdx], landmarks[clms[i].landmarkIdx]);
     }
 
     Solver::Options options;
@@ -98,14 +101,14 @@ void Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     if (fullReport)  std::cout << summary.BriefReport() << "\n";
 }
 
-void Slam::displayInputs() {
+void Slam::displayCLMS() {
     printf("-------display inputs---------\n");
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        printf("%ld ", i);
+    for (size_t i = 0; i < clms.size(); ++i) {
+        printf("%ld: %ld | %ld\n", i, clms[i].poseIdx, clms[i].landmarkIdx);
         printf("camera: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
-            inputs[i].pose[0], inputs[i].pose[1], inputs[i].pose[2], inputs[i].pose[3],
-            inputs[i].pose[4], inputs[i].pose[5], inputs[i].pose[6]);
-        printf("landmark: %.2f | %.2f | %.2f \n", inputs[i].landmark[0], inputs[i].landmark[1], inputs[i].landmark[2]);
+            poses[clms[i].poseIdx][0], poses[clms[i].poseIdx][1], poses[clms[i].poseIdx][2], poses[clms[i].poseIdx][3],
+            poses[clms[i].poseIdx][4], poses[clms[i].poseIdx][5], poses[clms[i].poseIdx][6]);
+        printf("landmark: %.2f | %.2f | %.2f \n", landmarks[clms[i].landmarkIdx][0], landmarks[clms[i].landmarkIdx][1], landmarks[clms[i].landmarkIdx][2]);
     }
 }
 
@@ -121,31 +124,21 @@ bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
 }
 
 void Slam::displayPosesAndLandmarkcs() {
-    vector<double*> xs;
-    vector<double*> ls;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        if (!vectorContains_(xs, inputs[i].pose, 7)) {
-            xs.push_back(inputs[i].pose);
-        }
-        if (!vectorContains_(ls, inputs[i].landmark, 3)) {
-            ls.push_back(inputs[i].landmark);
-        }
-    }
     printf("----------poses----------\n");
-    for (size_t i = 0; i < xs.size(); ++i) {
+    for (size_t i = 0; i < poses.size(); ++i) {
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
-            i, xs[i][0], xs[i][1], xs[i][2], xs[i][3], xs[i][4], xs[i][5], xs[i][6]);
+            i, poses[i][0], poses[i][1], poses[i][2], poses[i][3], poses[i][4], poses[i][5], poses[i][6]);
     }
     printf("----------landmarks----------\n");
-    for (size_t i = 0; i < ls.size(); ++i) {
-        printf("%ld: %.2f | %.2f | %.2f \n", i, ls[i][0], ls[i][1], ls[i][2]);
+    for (size_t i = 0; i < landmarks.size(); ++i) {
+        printf("%ld: %.2f | %.2f | %.2f \n", i, landmarks[i][0], landmarks[i][1], landmarks[i][2]);
     }
 }
 
 
-int Slam::inputsFind_(const SolverInput& input) {
-    for (int i = 0; i < inputs.size(); ++i) {
-        if (input == inputs[i]) {return i;}
+int Slam::clmsFind_(const CLM& clm) {
+    for (int i = 0; i < clms.size(); ++i) {
+        if (clm == clms[i]) {return i;}
     }
     return -1;
 }
