@@ -14,9 +14,6 @@ int main() {
     // double camera3[] = {-0.707, 0, 0.707, 0.0, 1.0, 0.0, 1.0};
     // double point_test[]  = {0, 0, 1};
     // double residual[2];
-    // // reprojection(camera1, point_test, residual);
-    // // reprojection(camera2, point_test, residual);
-    // // reprojection(camera3, point_test, residual);
     // Slam slam;
     // float X, Y, Z;
     // float x, y;
@@ -24,6 +21,16 @@ int main() {
     // slam.wolrdToImg_(camera3, 0, 0, 1.0, &x, &y);
     // printf("world coordinate: %.2f, %.2f, %.2f \n", X, Y, Z);
     // printf("img coordinate:   %.2f, %.2f\n", x, y);
+    // Quaterniond angle;
+    // // angle = Quaterniond(camera1[0], camera1[1], camera1[2], camera1[3]).inverse();
+    // // camera1[0] = angle.w(); camera1[1] = angle.x(); camera1[2] = angle.y(); camera1[3] = angle.z();
+    // reprojection(camera1, point_test, residual);
+    // // angle = Quaterniond(camera2[0], camera2[1], camera2[2], camera2[3]).inverse();
+    // // camera2[0] = angle.w(); camera2[1] = angle.x(); camera2[2] = angle.y(); camera2[3] = angle.z();
+    // reprojection(camera2, point_test, residual);
+    // // angle = Quaterniond(camera3[0], camera3[1], camera3[2], camera3[3]).inverse();
+    // // camera3[0] = angle.w(); camera3[1] = angle.x(); camera3[2] = angle.y(); camera3[3] = angle.z();
+    // reprojection(camera3, point_test, residual);
 
     vector<pair<string, string>> timestamps;
     vector<pair<Vector3f, Quaternionf>> odometries;
@@ -70,10 +77,10 @@ int main() {
     // }
 
 
-    slam.displayCLMS();
-    slam.displayPosesAndLandmarkcs();
+    // slam.displayCLMS();
+    // slam.displayPosesAndLandmarkcs();
     if (slam.optimize(false, true, false)) {
-        slam.displayPosesAndLandmarkcs();
+        // slam.displayPosesAndLandmarkcs();
     } else {
         printf("optimization failed\n");
     }

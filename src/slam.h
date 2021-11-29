@@ -94,11 +94,17 @@ struct ReprojectionError {
     bool operator()(const T* const camera,
                   const T* const point,
                   T* residuals) const {
+        
+        // p: translate world to base_link
         T p[3];
-        ceres::QuaternionRotatePoint(camera, point, p); // rotation
-        // cout << "rotated p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
+        ceres::QuaternionRotatePoint(camera, point, p);
         p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
-        // cout << "final p: " << p[0] << ", " << p[1] << ", " << p[2] << ", xp: " << p[0] / p[2] << ", yp: " << p[1] / p[2] << endl;
+        
+        // T translate[3];
+        // translate[0] = point[0] - camera[4]; translate[1] = point[1] - camera[5]; translate[2] = point[2] - camera[6];
+        // T rotate[4];
+        // rotate[0] = camera[0]; rotate[1] = -camera[1]; rotate[2] = -camera[2]; rotate[3] = -camera[3]; // inverse angle
+        // ceres::QuaternionRotatePoint(rotate, translate, p);
 
         T xp = p[0] / p[2];
         T yp = p[1] / p[2];
@@ -139,9 +145,10 @@ public:
     void displayPosesAndLandmarkcs();
     void imgToWorld_(double* camera, const int& x, const int& y, const int& z,
                  float* X_ptr, float* Y_ptr, float* Z_ptr);
-    bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+    void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
+                     float* X_ptr, float* Y_ptr, float* Z_ptr);
+    bool worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr);
-
 private:
     FeatureTracker feature_tracker;
     Vector3f prev_odom_loc_;
@@ -149,6 +156,7 @@ private:
     bool has_new_pose_;
     size_t t_start;
     vector<double*> poses;
+    vector<double*> cameras;
     vector<double*> landmarks;
     vector<CLM> clms;
     vector<pair<vector<KeyPoint>, Mat>> features;
@@ -156,8 +164,7 @@ private:
     int clmsFind_(const CLM& clm);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
     float getDist_(const Vector3f& odom1, const Vector3f& odom2);
-    void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
-                     float* X_ptr, float* Y_ptr, float* Z_ptr);
+    
     // bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
     //                  float* x_ptr, float* y_ptr);
     

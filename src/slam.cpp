@@ -32,13 +32,16 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
     if (!has_new_pose_) { return; }
     has_new_pose_ = false;
 
+    // extract current image features
     vector<KeyPoint> kp_curr;
     Mat des_curr;
     feature_tracker.getKpAndDes(img, &kp_curr, &des_curr);
     features.emplace_back(kp_curr, des_curr);
 
+    // if this is the first pose, nothing needs to be done
     if (features.size() < 2) { return; }
 
+    // if we have multiple poses
     vector<KeyPoint> kp;
     Mat des;
     vector<DMatch> matches;
@@ -47,48 +50,63 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
     float X, Y, Z;
     float predicted_x, predicted_y;
     size_t T = features.size() - 1;
+    
+    // perform correspondance matching across sequence of images
     for (size_t t = 0; t < T; ++t) {
+        // retrieve prevously stored features of image t
         kp = features[t].first;
         des = features[t].second;
+        // correspondance matching
         feature_tracker.match(des_curr, des, &matches);
+        // for all correspondances btw img T (curr) and img t
         for (auto match : matches) {
+            // CLM stores <poseIdx, landmarkIdx> : measurement
             CLM clm, clm_curr;
             clm.setPoseIdx(t);
             clm.setMeasurement(kp[match.trainIdx]);
             clm_curr.setPoseIdx(T);
             clm_curr.setMeasurement(kp[match.queryIdx]);
+            // check if we've seen this landmark before
             idx = clmsFind_(clm); // TODO: don't use hash for debugging; need to change back to hash
-            if (idx != -1) {
-                if (wolrdToImg_(poses[T], 
+            if (idx != -1) { 
+                // if so, landmarks[clms[idx].landmarkIdx] stores init X,Y,Z world coordinate estimate
+                // use wolrdToImg_ on X,Y,Z to get predicted measurement of idx-th landmark at pose T
+                // wolrdToImg_ also checks if image is supposed to be in bound
+                if (worldToImg_(cameras[T], 
                                 landmarks[clms[idx].landmarkIdx][0], landmarks[clms[idx].landmarkIdx][1], landmarks[clms[idx].landmarkIdx][2], 
                                 &predicted_x, &predicted_y)) {
+                    // add predicted measurement of idx-th landmark at pose T to clms for optimization
                     clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
                     clms.push_back(clm_curr);
                 } else {
+                    // this shouldn't happen often
                     printf("---------why you're out of range?? (case1)------------\n");
-                    printf("pose:         %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", poses[t][0], poses[t][1], poses[t][2], poses[t][3], poses[t][4], poses[t][5], poses[t][6]);
-                    printf("pose_cur:     %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", poses[T][0], poses[T][1], poses[T][2], poses[T][3], poses[T][4], poses[T][5], poses[T][6]);
+                    printf("camera:         %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6]);
+                    printf("camera_cur:     %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6]);
                     printf("landmark:     %.2f|%.2f|%.2f\n", landmarks[clms[idx].landmarkIdx][0], landmarks[clms[idx].landmarkIdx][1], landmarks[clms[idx].landmarkIdx][2]);
                     printf("measure:      %.2f|%.2f\n", kp[match.trainIdx].pt.x, kp[match.trainIdx].pt.y);
                     printf("measure_cur:  %.2f|%.2f\n", kp[match.queryIdx].pt.x, kp[match.queryIdx].pt.y);
                     printf("measure_pred: %.2f|%.2f\n", predicted_x, predicted_y);
                 }
             } else {
+                // if we've never seen this landmark before, we want to add both to clms for optimization
                 x = kp[match.trainIdx].pt.x;
                 y = kp[match.trainIdx].pt.y;
+                // get init X,Y,Z world coordinate estimate for new landmark
                 imgToWorld_(poses[t], x, y, depth, &X, &Y, &Z);
                 clm.setLandmarkIdx(landmarks.size());
                 clms.push_back(clm);
-                if (wolrdToImg_(poses[T], X, Y, Z, &predicted_x, &predicted_y)) {
+                if (worldToImg_(poses[T], X, Y, Z, &predicted_x, &predicted_y)) {
+                    // if this landmark is in bound of the current camera
                     clm_curr.setLandmarkIdx(landmarks.size());
                     clms.push_back(clm_curr);
                 } else {
-
+                    // TODO: this shouldn't happen often
                 }
                 double* landmark = new double[]{X, Y, Z};
                 landmarks.push_back(landmark);
             }
-            // clms.push_back(clm_curr);
+            // TODO: add me back to clean up codes - clms.push_back(clm_curr);
         }
     }
 }
@@ -97,9 +115,20 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
-        double* pose = new double[]{odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
+        // pose: transform baselink back to world coordinate
+        double* pose = new double[] {odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
                                     odom_loc.x(), odom_loc.y(), odom_loc.z()};
         poses.push_back(pose);
+        Affine3f odom_to_world = Affine3f::Identity();
+        odom_to_world.rotate(odom_angle);
+        odom_to_world.translate(odom_loc);
+        Affine3f world_to_odom = odom_to_world.inverse();
+        Quaternionf angle(world_to_odom.rotation());
+        Vector3f loc(world_to_odom.translation());
+        double* camera = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
+                                       loc.x(), loc.y(), loc.z()};
+        cameras.push_back(camera);
+
         has_new_pose_ = true; 
     // }
 }
@@ -108,19 +137,21 @@ bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     Problem problem;
     for (size_t i = 0; i < clms.size(); ++i) {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
-        // double* pose = poses[clms[i].poseIdx];
-        // Quaterniond rotate = Quaterniond(pose[0], pose[1], pose[2], pose[3]).inverse();
-        // poses[clms[i].poseIdx][0] = rotate.w();
-        // poses[clms[i].poseIdx][1] = rotate.x();
-        // poses[clms[i].poseIdx][2] = rotate.y();
-        // poses[clms[i].poseIdx][3] = rotate.z();
-        problem.AddResidualBlock(cost_function, NULL, poses[clms[i].poseIdx], landmarks[clms[i].landmarkIdx]);
+        // printf("camera: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+        //     poses[clms[i].poseIdx][0], poses[clms[i].poseIdx][1], poses[clms[i].poseIdx][2], poses[clms[i].poseIdx][3],
+        //     poses[clms[i].poseIdx][4], poses[clms[i].poseIdx][5], poses[clms[i].poseIdx][6]);
+        // printf("landmark: %.2f | %.2f | %.2f \n", landmarks[clms[i].landmarkIdx][0], landmarks[clms[i].landmarkIdx][1], landmarks[clms[i].landmarkIdx][2]);
+        // cout << "camera_addr: " << poses[clms[i].poseIdx] << ", landmark_addr: " << landmarks[clms[i].landmarkIdx] << endl;
+        // cout << landmarks[clms[i].landmarkIdx] - poses[clms[i].poseIdx] << endl;
+        problem.AddResidualBlock(cost_function, NULL, cameras[clms[i].poseIdx], landmarks[clms[i].landmarkIdx]);
     }
 
     Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = minimizer_progress_to_stdout;
     Solver::Summary summary;
+    double cost;
+    // problem.Evaluate(Problem::EvaluateOptions(), &cost, nullptr, nullptr, nullptr);
     ceres::Solve(options, &problem, &summary);
     if (briefReport) std::cout << summary.FullReport() << "\n";
     if (fullReport)  std::cout << summary.BriefReport() << "\n";
@@ -196,11 +227,13 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& de
     Z = (depth.at<ushort>(y, x)) / factor;
     X = (x - cx) * Z / fx;
     Y = (Y - cy) * Z / fy;
-    // Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
-    Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
-    X = landmark_trans.x();
-    Y = landmark_trans.y();
-    Z = landmark_trans.z();
+    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    Vector3f v(camera[4], camera[5], camera[6]);
+    Vector3f world = r * (Vector3f(X, Y, Z) - v);
+
+    X = world.x();
+    Y = world.y();
+    Z = world.z();
 }
 
 void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
@@ -214,26 +247,27 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     Z = z / factor;
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
-    // Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
-    Vector3f landmark_trans = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
+
+    Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
+    Vector3f v(camera[4], camera[5], camera[6]);
+    Vector3f world = r * (Vector3f(X, Y, Z) - v);
     // printf("imgToWorld_: %.2f, %.2f, %.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", 
     //     X, Y, Z, X - camera[4], Y - camera[5], Z - camera[6], landmark_trans.x(), landmark_trans.y(), landmark_trans.z());
-    X = landmark_trans.x();
-    Y = landmark_trans.y();
-    Z = landmark_trans.z();
+    X = world.x();
+    Y = world.y();
+    Z = world.z();
 }
 
-bool Slam::wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
+bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr) {
     float &x = *x_ptr;
     float &y = *y_ptr;
 
     Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
-    // Vector3f rotated = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z);
-    Vector3f measurement = Quaternionf(camera[0], camera[1], camera[2], camera[3]) * Vector3f(X, Y, Z) + Vector3f(camera[4], camera[5], camera[6]);
-    // Vector3f measurement = Quaternionf(camera[0], camera[1], camera[2], camera[3]).inverse() * (Vector3f(X, Y, Z) - Vector3f(camera[4], camera[5], camera[6]));
-    float xp = measurement.x() / measurement.z();
-    float yp = measurement.y() / measurement.z();
+    Vector3f v(camera[4], camera[5], camera[6]);
+    Vector3f point = r * Vector3f(X, Y, Z) + v;
+    float xp = point.x() / point.z();
+    float yp = point.y() / point.z();
     x = xp * fx + cx;
     y = yp * fy + cy;
 
