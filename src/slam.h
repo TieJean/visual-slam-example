@@ -126,6 +126,7 @@ struct ReprojectionError {
 class Slam {
 
 public: 
+    bool debug = false;
     Slam();
 
     void init();
