@@ -100,12 +100,6 @@ struct ReprojectionError {
         ceres::QuaternionRotatePoint(camera, point, p);
         p[0] += camera[4]; p[1] += camera[5]; p[2] += camera[6]; // translation
         
-        // T translate[3];
-        // translate[0] = point[0] - camera[4]; translate[1] = point[1] - camera[5]; translate[2] = point[2] - camera[6];
-        // T rotate[4];
-        // rotate[0] = camera[0]; rotate[1] = -camera[1]; rotate[2] = -camera[2]; rotate[3] = -camera[3]; // inverse angle
-        // ceres::QuaternionRotatePoint(rotate, translate, p);
-
         T xp = p[0] / p[2];
         T yp = p[1] / p[2];
         T predicted_x = xp * T(fx) + T(cx);
@@ -113,10 +107,7 @@ struct ReprojectionError {
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
         if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
-            printf("landmark outside range: \n");
-            // cout << predicted_x << ", " << predicted_y << endl;
-            // cout << xp << ", " <<  T(fx) << ", " <<  T(cx) << endl;
-            // cout << yp << ", " <<  T(fy) << ", " << T(cy) << endl;
+            // printf("landmark outside range: \n");
             residuals[0] = T(0);
             residuals[1] = T(0);
         }
