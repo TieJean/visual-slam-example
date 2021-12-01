@@ -245,9 +245,9 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& de
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
 
-    Affine3f odom_to_world = Affine3f::Identity();
-    odom_to_world.translate(Vector3f(camera[4], camera[5], camera[6]));
-    odom_to_world.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
+    Affine3f world_to_odom = Affine3f::Identity();
+    world_to_odom.translate(Vector3f(camera[4], camera[5], camera[6]));
+    world_to_odom.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
     // Vector3f world = odom_to_world.inverse() * Vector3f(X, Y, Z);
     Vector3f world = world_to_odom.inverse() * Vector3f(X, Y, Z);
 
@@ -298,10 +298,10 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     // Vector3f point = r * Vector3f(X, Y, Z) + v;
     // Vector3f point = r.inverse() * (Vector3f(X, Y, Z) - v);
 
-    Affine3f odom_to_world = Affine3f::Identity();
-    odom_to_world.translate(Vector3f(camera[4], camera[5], camera[6]));
-    odom_to_world.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    Vector3f point = odom_to_world * Vector3f(X, Y, Z);
+    Affine3f world_to_odom = Affine3f::Identity();
+    world_to_odom.translate(Vector3f(camera[4], camera[5], camera[6]));
+    world_to_odom.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
+    Vector3f point = world_to_odom * Vector3f(X, Y, Z);
     // Vector3f point = odom_to_world.inverse() * Vector3f(X, Y, Z);
 
     float xp = point.x() / point.z();
