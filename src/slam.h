@@ -134,7 +134,8 @@ public:
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
     bool optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     void displayCLMS();
-    void displayPosesAndLandmarkcs();
+    void displayPoses();
+    void displayLandmarks();
     void imgToWorld_(double* camera, const int& x, const int& y, const int& z,
                  float* X_ptr, float* Y_ptr, float* Z_ptr);
     void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,

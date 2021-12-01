@@ -217,7 +217,7 @@ bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
     return false;
 }
 
-void Slam::displayPosesAndLandmarkcs() {
+void Slam::displayPoses() {
     printf("----------cameras----------\n");
     for (size_t i = 0; i < cameras.size(); ++i) {
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
@@ -237,6 +237,9 @@ void Slam::displayPosesAndLandmarkcs() {
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             i, pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
     }
+}
+
+void Slam::displayLandmarks() {
     printf("----------landmarks----------\n");
     for (size_t i = 0; i < points.size(); ++i) {
         printf("%ld: %.2f | %.2f | %.2f \n", i, points[i][0], points[i][1], points[i][2]);
