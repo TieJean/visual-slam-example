@@ -148,10 +148,14 @@ private:
     bool has_new_pose_;
     size_t t_start;
     vector<double*> poses;
-    vector<double*> cameras;
     vector<double*> landmarks;
+
+    vector<double*> cameras;
+    vector<double*> points;
+    vector<unsigned short> point_cnts;
     vector<CLM> clms;
     vector<pair<vector<KeyPoint>, Mat>> features;
+    vector<Mat> depths; // TODO: optimize space
 
     int clmsFind_(const CLM& clm);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
