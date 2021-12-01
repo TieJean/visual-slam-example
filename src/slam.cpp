@@ -82,16 +82,16 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                     clm_curr.setLandmarkIdx(clms[idx].landmarkIdx);
                     clms.push_back(clm_curr);
                     // update init estimate of landmarks
-                    imgToWorld_(cameras[T], x, y, depth, &X_curr, &Y_curr, &Z_curr);
-                    ++point_cnts[landmarkIdx];
-                    float denominator = (float) point_cnts[landmarkIdx];
-                    points[landmarkIdx][0] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][0];
-                    points[landmarkIdx][1] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][1];
-                    points[landmarkIdx][2] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][2];
+                    // imgToWorld_(cameras[T], x, y, depth, &X_curr, &Y_curr, &Z_curr);
+                    // ++point_cnts[landmarkIdx];
+                    // float denominator = (float) point_cnts[landmarkIdx];
+                    // points[landmarkIdx][0] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][0];
+                    // points[landmarkIdx][1] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][1];
+                    // points[landmarkIdx][2] = (1.0 / denominator) * X_curr + (denominator - 1) / denominator * points[landmarkIdx][2];
                 } else {
                     // printf("measure_pred: %.2f|%.2f\n", predicted_x, predicted_y);
                     // this shouldn't happen often
-                    if (0) {
+                    if (1) {
                         printf("---------why you're out of rclange?? (case1)------------\n");
                         printf("camera:       %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6]);
                         printf("camera_cur:   %.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f\n", cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6]);
@@ -103,8 +103,8 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                 }
             } else {
                 // if we've never seen this landmark before, we want to add both to clms for optimization
-                x = kp[match.queryIdx].pt.x;
-                y = kp[match.queryIdx].pt.y;
+                x = (int) kp[match.queryIdx].pt.x;
+                y = (int) kp[match.queryIdx].pt.y;
                 // get init X,Y,Z world coordinate estimate for new landmark
                 imgToWorld_(cameras[T], x, y, depth, &X_curr, &Y_curr, &Z_curr);
                 clm_curr.setLandmarkIdx(points.size());
@@ -112,16 +112,16 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                 x = kp[match.trainIdx].pt.x;
                 y = kp[match.trainIdx].pt.y;
                 imgToWorld_(cameras[t], x, y, depths[t], &X, &Y, &Z);
-                X = (X + X_curr) / 2;
-                Y = (Y + Y_curr) / 2;
-                Z = (Z + Z_curr) / 2;
-                if (worldToImg_(cameras[t], X, Y, Z, &predicted_x, &predicted_y)) { // TODO: FIXME
+                // X = (X + X_curr) / 2;
+                // Y = (Y + Y_curr) / 2;
+                // Z = (Z + Z_curr) / 2;
+                if (worldToImg_(cameras[t], X_curr, Y_curr, Z_curr, &predicted_x, &predicted_y)) { // TODO: FIXME
                     // if this landmark is in bound of the current camera
                     clm.setLandmarkIdx(points.size());
                     clms.push_back(clm);
                 } else {
                     // TODO: this shouldn't happen often
-                    if (0) {
+                    if (1) {
                         printf("---------why you're out of range?? (case2)------------\n");
                         printf("camera:         %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6]);
                         printf("camera_cur:     %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6]);
@@ -130,9 +130,14 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                         printf("measure:        %.2f|%.2f\n", kp[match.trainIdx].pt.x, kp[match.trainIdx].pt.y);
                         printf("measure_cur:    %.2f|%.2f\n", kp[match.queryIdx].pt.x, kp[match.queryIdx].pt.y);
                         printf("measure_pred:   %.2f|%.2f\n", predicted_x, predicted_y);
+                        printf("debug\n");
+                        imgToWorld_(cameras[T], (int) kp[match.queryIdx].pt.x, (int) kp[match.queryIdx].pt.y, depth, &X_curr, &Y_curr, &Z_curr);
+                        printf("landmark_cur:   %.2f|%.2f|%.2f\n", X_curr, Y_curr, Z_curr);
+
                     }
                 }
-                double* landmark = new double[]{X, Y, Z};
+                // double* landmark = new double[]{X, Y, Z};
+                double* landmark = new double[]{X_curr, Y_curr, Z_curr};
                 points.push_back(landmark);
                 point_cnts.push_back(2);
             }
@@ -146,12 +151,17 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
         // pose: transform baselink back to world coordinate
+        // odom x --> camera z
+        // odom y --> camera x
+        // odom z --> camera y
         double* pose = new double[] {odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
-                                    odom_loc.x(), odom_loc.y(), odom_loc.z()};
+                                     odom_loc.z(), odom_loc.x(), odom_loc.y()};
+        // double* pose = new double[] {odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
+        //                              odom_loc.x(), odom_loc.y(), odom_loc.z()};
         poses.push_back(pose);
         Affine3f odom_to_world = Affine3f::Identity();
-        odom_to_world.translate(odom_loc);
-        odom_to_world.rotate(odom_angle);
+        odom_to_world.translate(Vector3f(odom_loc.z(), odom_loc.x(), odom_loc.y()));
+        odom_to_world.rotate(Quaternionf(odom_angle.w(), odom_angle.z(), odom_angle.x(), odom_angle.y()));
         Affine3f world_to_odom = odom_to_world.inverse();
         Quaternionf angle(world_to_odom.rotation());
         Vector3f loc(world_to_odom.translation());
@@ -182,6 +192,7 @@ bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     }
 
     Solver::Options options;
+    options.max_num_iterations = 100;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = minimizer_progress_to_stdout;
     Solver::Summary summary;
@@ -230,8 +241,8 @@ void Slam::displayPoses() {
         world_to_odom.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
         world_to_odom.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
         odom_to_world = world_to_odom.inverse();
-        Quaternionf angle(world_to_odom.rotation());
-        Vector3f loc(world_to_odom.translation());
+        Quaternionf angle(odom_to_world.rotation());
+        Vector3f loc(odom_to_world.translation());
         double* pose = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
                                         loc.x(), loc.y(), loc.z()};
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
@@ -276,24 +287,33 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& de
     float &Z = *Z_ptr;
 
     const float factor = 5000.0;
-    // cout << "imgToWorld_depth " << x << ", " << y << endl;
 
-    Z = depth.at<ushort>(y, x) / factor;
+    Z = (float)depth.at<ushort>(y, x) / factor;
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
+    
 
     Affine3f world_to_odom = Affine3f::Identity();
     world_to_odom.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_odom.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    // Vector3f world = odom_to_world.inverse() * Vector3f(X, Y, Z);
     Vector3f world = world_to_odom.inverse() * Vector3f(X, Y, Z);
+    // Vector3f world = world_to_odom * Vector3f(X, Y, Z);
+    if (0) {
+        cout << endl;
+        cout << Z << endl;
+        cout << x << ", " << y << endl;
+        printf("camera:         %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+        cout << world_to_odom.inverse().rotation() << endl;
+        cout << world_to_odom.inverse().translation() << endl;
+        cout << endl;
+    }
 
     // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
     // Vector3f v(camera[4], camera[5], camera[6]);
     // Vector3f world = r.inverse() * (Vector3f(X, Y, Z) - v);
-    X = world.x();
-    Y = world.y();
-    Z = world.z();
+    X = world.z();
+    Y = world.x();
+    Z = world.y();
 }
 
 void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
@@ -303,48 +323,72 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     float &Z = *Z_ptr;
 
     const float factor = 5000.0;
-    // cout << "imgToWorld_z " << x << ", " << y << endl;
 
-    Z = z / factor;
+    // X, Y, Z are in image coordinate
+    Z = (float) z / factor;
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
+
 
     // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
     // Vector3f v(camera[4], camera[5], camera[6]);
     // Vector3f world = r * Vector3f(X, Y, Z) + v;
     // Vector3f world = r.inverse() * (Vector3f(X, Y, Z) - v);
 
+    // camera is in image coordinate
     Affine3f world_to_odom = Affine3f::Identity();
     world_to_odom.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_odom.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    // Vector3f world = odom_to_world.inverse() * Vector3f(X, Y, Z);
-    Vector3f world = world_to_odom.inverse() * Vector3f(X, Y, Z);
+    // Vector3f world = world_to_odom.inverse() * Vector3f(X, Y, Z);
+    Vector3f world = world_to_odom * Vector3f(X, Y, Z);
 
-    X = world.x();
-    Y = world.y();
-    Z = world.z();
+    if (0) {
+        cout << endl;
+        cout << Z << endl;
+        cout << x << ", " << y << endl;
+        printf("camera: %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+        cout << world_to_odom.rotation() << endl;
+        cout << world_to_odom.translation() << endl;
+        cout << endl;
+    }
+    
+
+    X = world.z();
+    Y = world.x();
+    Z = world.y();
 }
 
 bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr) {
     float &x = *x_ptr;
     float &y = *y_ptr;
-
+    
     // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
     // Vector3f v(camera[4], camera[5], camera[6]);
     // Vector3f point = r * Vector3f(X, Y, Z) + v;
     // Vector3f point = r.inverse() * (Vector3f(X, Y, Z) - v);
 
+    // X, Y, Z are in world coordinate
+    // camera is in image coordinate
     Affine3f world_to_odom = Affine3f::Identity();
     world_to_odom.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_odom.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    Vector3f point = world_to_odom * Vector3f(X, Y, Z);
-    // Vector3f point = odom_to_world.inverse() * Vector3f(X, Y, Z);
+    Vector3f point = world_to_odom * Vector3f(Y, Z, X);
+    // Vector3f point = world_to_odom.inverse() * Vector3f(X, Y, Z);
 
+    // TODO: danger - fix divide by small number
     float xp = point.x() / point.z();
     float yp = point.y() / point.z();
     x = xp * fx + cx;
     y = yp * fy + cy;
+
+    if (0) {
+        cout << endl;
+        printf("camera: %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+        cout << world_to_odom.rotation() << endl;
+        cout << world_to_odom.translation() << endl;
+        cout << endl;
+    }
 
     return (x < (float)(imgWidth + imgEdge)) && (x >= (float)(-imgEdge)) && (y <= (float)(imgHeight + imgEdge)) && (y > (float)(-imgEdge));
 }
