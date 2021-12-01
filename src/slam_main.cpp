@@ -7,6 +7,52 @@ using namespace std;
 using namespace slam;
 using namespace Eigen;
 
+/**
+int main() {
+    Slam slam;
+    slam.init();
+    double pose1[] = {0, 0, 0.13, 1, 0, 0, 0};
+    double pose2[] = {0.1524, 0, 0.13 ,1, 0, 0, 0};
+
+    Affine3f odom_to_world, world_to_odom;
+    odom_to_world = Affine3f::Identity();
+    odom_to_world.translate(Vector3f(0, 0, 0.13));
+    odom_to_world.rotate(Quaternionf(1, 0, 0, 0));
+    world_to_odom = odom_to_world.inverse();
+    Quaternionf angle1(world_to_odom.rotation());
+    Vector3f loc1(world_to_odom.translation());
+    double* camera1 = new double[] {angle1.w(), angle1.x(), angle1.y(), angle1.z(),
+                                    loc1.x(), loc1.y(), loc1.z()};
+    odom_to_world = Affine3f::Identity();
+    odom_to_world.translate(Vector3f(0.1524, 0, 0.13));
+    odom_to_world.rotate(Quaternionf(1, 0, 0, 0));
+    world_to_odom = odom_to_world.inverse();
+    Quaternionf angle2(world_to_odom.rotation());
+    Vector3f loc2(world_to_odom.translation());
+    double* camera2 = new double[] {angle2.w(), angle2.x(), angle2.y(), angle2.z(),
+                                    loc2.x(), loc2.y(), loc2.z()};
+    // 258.4 294.2
+    float X, Y, Z;
+    float x_prime, y_prime, z_prime;
+    float x, y;
+    x_prime = 248.7; 
+    y_prime = 289.7;
+    z_prime = 6 * 5000;
+    slam.imgToWorld_(camera2, x_prime, y_prime, z_prime, &X, &Y, &Z);
+    printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
+    slam.worldToImg_(camera1, X, Y, Z, &x, &y);
+    printf("measure_pred: %.2f|%.2f\n", x, y);
+
+    x_prime = 258.4; 
+    y_prime = 294.2;
+    z_prime = (6 - 0.1524) * 5000;
+    slam.imgToWorld_(camera1, x_prime, y_prime, z_prime, &X, &Y, &Z);
+    printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
+    slam.worldToImg_(camera2, X, Y, Z, &x, &y);
+    printf("measure_pred: %.2f|%.2f\n", x, y);
+}
+*/
+
 int main() {
     // Slam slam;
     // slam.init();
@@ -41,7 +87,7 @@ int main() {
     // y_prime = 52.05;
     // z_prime = depth2.at<ushort>(52, 542);
     // cout << z_prime / 5000.0 << endl;
-    // slam.imgToWorld_(camera2, x_prime, y_prime, 4*5000, &X, &Y, &Z);
+    // slam.imgToWorld_(camera2, x_prime, y_prime, z_prime, &X, &Y, &Z);
     // printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
     // slam.worldToImg_(camera1, X, Y, Z, &x, &y);
     // printf("measure_pred: %.2f|%.2f\n", x, y);
@@ -49,7 +95,7 @@ int main() {
     // x_prime = 438.84;
     // y_prime = 55.31;
     // z_prime = depth1.at<ushort>(55, 439);
-    // slam.imgToWorld_(camera1, x_prime, y_prime, 4*5000, &X, &Y, &Z);
+    // slam.imgToWorld_(camera1, x_prime, y_prime, z_prime, &X, &Y, &Z);
     // cout << z_prime / 5000.0 << endl;
     // printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
     // slam.worldToImg_(camera2, X, Y, Z, &x, &y);
@@ -59,6 +105,7 @@ int main() {
     // X = (-5.99 -5.04) / 2;
     // Y = (-4.82 -5.56) / 2;
     // Z = 1.67;
+    // cout << X << ", " << Y << ", " << Z << endl;
     // slam.worldToImg_(camera1, X, Y, Z, &x, &y);
     // printf("measure_pred: %.2f|%.2f\n", x, y);
     // slam.worldToImg_(camera2, X, Y, Z, &x, &y);
@@ -115,10 +162,10 @@ int main() {
     // }
 
 
-    slam.displayCLMS();
+    // slam.displayCLMS();
     // slam.displayPosesAndLandmarkcs();
     if (slam.optimize(false, true, false)) {
-        // slam.displayPosesAndLandmarkcs();
+        slam.displayPosesAndLandmarkcs();
     } else {
         printf("optimization failed\n");
     }

@@ -219,12 +219,26 @@ bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
 
 void Slam::displayPosesAndLandmarkcs() {
     printf("----------cameras----------\n");
-    for (size_t i = 0; i < poses.size(); ++i) {
+    for (size_t i = 0; i < cameras.size(); ++i) {
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
     }
+    printf("----------poses----------\n");
+    for (size_t i = 0; i < cameras.size(); ++i) {
+        Affine3f odom_to_world, world_to_odom;
+        world_to_odom = Affine3f::Identity();
+        world_to_odom.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
+        world_to_odom.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
+        odom_to_world = world_to_odom.inverse();
+        Quaternionf angle(world_to_odom.rotation());
+        Vector3f loc(world_to_odom.translation());
+        double* pose = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
+                                        loc.x(), loc.y(), loc.z()};
+        printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            i, pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+    }
     printf("----------landmarks----------\n");
-    for (size_t i = 0; i < landmarks.size(); ++i) {
+    for (size_t i = 0; i < points.size(); ++i) {
         printf("%ld: %.2f | %.2f | %.2f \n", i, points[i][0], points[i][1], points[i][2]);
     }
 }
