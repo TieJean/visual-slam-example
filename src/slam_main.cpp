@@ -47,24 +47,16 @@ int main() {
         float x_pred, y_pred;
         x = 528.511092; 
         y = 210.307524;
-        z = 18.883421 * 5000;
+        z = (18.883421 + 18.5) * 5000;
         slam.imgToWorld_(pose2, x, y, z, &X, &Y, &Z);
         printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
         // X = 18.883421;
         // Y = -20.269062;
         // Z = 2.886363;
-        // cout << angle1 << endl;
-        // cout << loc1 << endl;
-        slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
+        slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
         printf("measure_pred: %.2f|%.2f\n", x_pred, y_pred); // 536.877545 209.116121
 
-        // x_prime = 528.511092; 
-        // y_prime = 210.307524;
-        // z_prime = (1 + 1.5) * 5000;
-        // slam.imgToWorld_(pose1, x_prime, y_prime, z_prime, &X, &Y, &Z);
-        // printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
-        // slam.worldToImg_(camera2, X, Y, Z, &x, &y);
-        // printf("measure_pred: %.2f|%.2f\n", x, y);
+
     }
 
     if (0) {
