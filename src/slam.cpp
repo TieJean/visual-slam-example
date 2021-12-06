@@ -334,7 +334,7 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
 
-    cout << "imgToWorld_: " << X << ", " << Y << ", " << Z << endl;
+    // cout << "imgToWorld_: " << X << ", " << Y << ", " << Z << endl;
     // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
     // Vector3f v(camera[4], camera[5], camera[6]);
     // Vector3f world = r * Vector3f(X, Y, Z) + v;
@@ -346,7 +346,7 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
     // Vector3f world = world_to_camera.inverse() * Vector3f(X, Y, Z);
     Vector3f world = world_to_camera * Vector3f(X, Y, Z);
-    cout << "world: " << world.x() << ", " << world.y() << ", " << world.z() << endl;
+    // cout << "world: " << world.x() << ", " << world.y() << ", " << world.z() << endl;
     if (0) {
         cout << endl;
         cout << Z << endl;
@@ -370,13 +370,13 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     
     // X, Y, Z are in world coordinate
     // camera is in image coordinate
-    cout << "worldToImg_: " << Y << ", " << Z << ", " << X << endl;
+    // cout << "worldToImg_: " << Y << ", " << Z << ", " << X << endl;
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
     Vector3f point = world_to_camera * Vector3f(-Y, -Z, X);
     // Vector3f point = world_to_camera * Vector3f(X, Y, Z);
-    cout << "point: " << point.x() << ", " << point.y() << ", " << point.z() << endl;
+    // cout << "point: " << point.x() << ", " << point.y() << ", " << point.z() << endl;
     // TODO: danger - fix dividing by small number
     float xp = point.x() / point.z();
     float yp = point.y() / point.z();

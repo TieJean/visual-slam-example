@@ -45,16 +45,25 @@ int main() {
         float X, Y, Z;
         float x, y, z;
         float x_pred, y_pred;
-        x = 528.511092; 
-        y = 210.307524;
+        x = 534.015111; 
+        y = 209.523739;
         z = (18.883421 + 18.5) * 5000;
         slam.imgToWorld_(pose2, x, y, z, &X, &Y, &Z);
+        printf("------------\n");
         printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
-        // X = 18.883421;
-        // Y = -20.269062;
-        // Z = 2.886363;
+        slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
+        printf("camera2 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
         slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
-        printf("measure_pred: %.2f|%.2f\n", x_pred, y_pred); // 536.877545 209.116121
+        printf("camera1 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        
+        printf("------------\n");
+        X = 18.883421;
+        Y = -20.269062;
+        Z = 2.886363;
+        slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
+        printf("camera2 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
+        printf("camera1 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
 
 
     }
