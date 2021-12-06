@@ -19,6 +19,9 @@ Slam::Slam() :
     prev_odom_loc_(0.0,0.0,0.0),
     prev_odom_angle_(0.0,0.0,0.0,0.0),
     has_new_pose_(false) {
+        cameraIntrinsic << fx, 0,  cx,
+                           0,  fy, cy,
+                           0,  0,  1;
     }
 
 void Slam::init() {
@@ -280,6 +283,8 @@ float Slam::getDist_(const Vector3f& odom1, const Vector3f& odom2) {
     return sqrt( x_pow + y_pow + z_pow);
 }
 
+// input: double* camera, const int& x, const int& y, const Mat& depth
+// ret: float* X_ptr, float* Y_ptr, float* Z_ptr
 void Slam::imgToWorld_(double* camera, const int& x, const int& y, const Mat& depth,
                  float* X_ptr, float* Y_ptr, float* Z_ptr) {
     float &X = *X_ptr;
@@ -324,7 +329,7 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
 
     const float factor = 5000.0;
 
-    // X, Y, Z are in image coordinate
+    // X, Y, Z are in image coordinate, odom frame
     Z = (float) z / factor;
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
@@ -363,11 +368,6 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     float &x = *x_ptr;
     float &y = *y_ptr;
     
-    // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
-    // Vector3f v(camera[4], camera[5], camera[6]);
-    // Vector3f point = r * Vector3f(X, Y, Z) + v;
-    // Vector3f point = r.inverse() * (Vector3f(X, Y, Z) - v);
-
     // X, Y, Z are in world coordinate
     // camera is in image coordinate
     Affine3f world_to_odom = Affine3f::Identity();
@@ -376,11 +376,14 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     Vector3f point = world_to_odom * Vector3f(Y, Z, X);
     // Vector3f point = world_to_odom.inverse() * Vector3f(X, Y, Z);
 
-    // TODO: danger - fix divide by small number
+    // TODO: danger - fix dividing by small number
     float xp = point.x() / point.z();
     float yp = point.y() / point.z();
     x = xp * fx + cx;
     y = yp * fy + cy;
+    // Vector3f image = cameraIntrinsic * Vector3f(xp, yp, 1);
+    // x = image.x();
+    // y = image.y();
 
     if (0) {
         cout << endl;

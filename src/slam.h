@@ -32,16 +32,6 @@ const float fx = 400.000000;
 const float fy = 400.000000; 
 const float cx = 320.000000; 
 const float cy = 240.000000;
-// const float fx = 520.9;
-// const float fy = 521.0;
-// const float cx = 325.1;
-// const float cy = 249.7;
-const float d0 = 0.2312;
-const float d1 = -0.7849;
-const float d2 = -0.0033;
-const float d3 = -0.0001;
-const float d4 = 0.9172;
-const float ds = 1.031;
 
 const size_t poseDim = 7;
 const size_t landmarkDim = 3;
@@ -152,6 +142,8 @@ private:
     Quaternionf prev_odom_angle_;
     bool has_new_pose_;
     size_t t_start;
+    Matrix3f cameraIntrinsic;
+
     vector<double*> poses;
     vector<double*> landmarks;
 
