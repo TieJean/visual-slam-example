@@ -322,13 +322,26 @@ void Slam::displayPoses() {
 void Slam::displayLandmarks() {
     printf("----------landmarks----------\n");
     for (size_t i = 0; i < points.size(); ++i) {
-        printf("%ld: %.2f | %.2f | %.2f \n", i, points[i][0], points[i][1], points[i][2]);
+        printf("%ld: %.2f | %.2f | %.2f \n", i, points[i][2], -points[i][0], -points[i][1]);
     }
 }
 
-// void Slam::dumpToCSV(string path) {
+void Slam::dumpLandmarksToCSV(string path) {
+    ofstream fp;
+    fp.open(path, ios::trunc);
+    if (!fp.is_open()) {
+        printf("error in opening file\n");
+        exit(1);
+    }
+    for (size_t i = 0; i < points.size(); ++i) {
+        fp << points[i][2] << "," << -points[i][0] << "," << -points[i][1] << endl;
+    }
+    fp.close();
+}
 
-// }
+void Slam::dumpPosesToCSV(string path) {
+
+}
 
 
 int Slam::clmsFind_(const CLM& clm) {

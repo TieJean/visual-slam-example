@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <array>
+#include <fstream>
 
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
@@ -100,7 +101,6 @@ struct ReprojectionError {
         T predicted_y = yp * T(fy) + T(cy);
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
-        cout << "residules: " <<  residuals[0] << ", " << residuals[1] << endl;
         // if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
             // printf("landmark outside range: \n");
             // residuals[0] = T(0);
@@ -139,6 +139,9 @@ public:
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
     bool worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr);
+    void dumpLandmarksToCSV(string path);
+    void dumpPosesToCSV(string path);
+
 private:
     FeatureTracker feature_tracker;
     Vector3f prev_odom_loc_;

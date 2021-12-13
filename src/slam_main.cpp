@@ -80,7 +80,7 @@ int main() {
     if (1) {
         const string DATA_DIR = "../data/vslam_set2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
-        const size_t N_POSE = 5;
+        const size_t N_POSE = 21;
         const size_t N_LANDMARK = 2 + 5;
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
@@ -148,9 +148,10 @@ int main() {
             fp.close();
         }
         slam.optimize();
+        slam.displayLandmarks();
+        slam.displayPoses();
+        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks.csv");
 
     }
-
-    
     
 }
