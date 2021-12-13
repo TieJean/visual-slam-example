@@ -100,11 +100,12 @@ struct ReprojectionError {
         T predicted_y = yp * T(fy) + T(cy);
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
-        if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
+        cout << "residules: " <<  residuals[0] << ", " << residuals[1] << endl;
+        // if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
             // printf("landmark outside range: \n");
-            residuals[0] = T(0);
-            residuals[1] = T(0);
-        }
+            // residuals[0] = T(0);
+            // residuals[1] = T(0);
+        // }
 
         return true;
     }
@@ -124,8 +125,10 @@ public:
     Slam();
 
     void init();
+    void observeImage(const vector<pair<pair<float, float>, float>>& observation); // for vslam dataset
     void observeImage(const Mat& img, const Mat& depth);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
+    bool optimize(); // for vslam dataset
     bool optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
     void displayCLMS();
     void displayPoses();
@@ -153,6 +156,9 @@ private:
     vector<CLM> clms;
     vector<pair<vector<KeyPoint>, Mat>> features;
     vector<Mat> depths; // TODO: optimize space
+
+    // for vslam dataset
+    vector<vector<pair<pair<float, float>, float>>> observations;
 
     int clmsFind_(const CLM& clm);
     Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);

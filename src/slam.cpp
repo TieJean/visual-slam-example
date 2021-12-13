@@ -31,6 +31,37 @@ void Slam::init() {
     features.clear();
 }
 
+void Slam::observeImage(const vector<pair<pair<float, float>, float>>& observation) {
+    pair<pair<float, float>, float> prev_obs; // obs.first: measurement; obs.second: depth
+    pair<pair<float, float>, float> curr_obs;
+    float prev_pred[3];
+    float curr_pred[3];
+    const size_t T = cameras.size() - 1; // last pose idx
+
+    if (!has_new_pose_) { return; }
+    has_new_pose_ = false;
+    observations.push_back(observation);
+    if (cameras.size() < 2) { return; }
+    for (size_t t = 0; t < cameras.size() - 1; ++t) {
+        for (size_t i = 0; i < observation.size(); ++i) { // assume all "observation" have the same size
+            prev_obs = observations[t][i];
+            curr_obs = observation[i]; // correspondance matching
+            imgToWorld_(cameras[t], prev_obs.first.first, prev_obs.first.second, prev_obs.second, &prev_pred[0], &prev_pred[1], &prev_pred[2]);
+            imgToWorld_(cameras[T], curr_obs.first.first, curr_obs.first.second, curr_obs.second, &curr_pred[0], &curr_pred[1], &curr_pred[2]);
+            if ( cameras.size() == 2 ) {
+                double* point = new double[]{ (prev_pred[0] + curr_pred[0]) / 2, 
+                                              (prev_pred[1] + curr_pred[1]) / 2,
+                                              (prev_pred[2] + curr_pred[2]) / 2 };
+                points.push_back(point);
+            } else {
+                points[i][0] = (points[i][0] * (T-1) + curr_pred[0]) / T; // T-1 > 0 since cameras.size() >= 2
+                points[i][1] = (points[i][1] * (T-1) + curr_pred[1]) / T;
+                points[i][2] = (points[i][2] * (T-1) + curr_pred[2]) / T;
+            }
+        }
+    }
+}
+
 void Slam::observeImage(const Mat& img, const Mat& depth) {
     if (!has_new_pose_) { return; }
     has_new_pose_ = false;
@@ -153,18 +184,16 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // if ( poses.size() != 0 || getDist_(prev_odom_loc_, odom_loc) > MIN_DELTA_D || getQuaternionDelta_(prev_odom_angle_, odom_angle).norm() < MIN_DELTA_A ) { 
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
-        // pose: transform baselink back to world coordinate
-        // odom x --> camera z
-        // odom y --> camera x
-        // odom z --> camera y
+
+        // assume "pose" and "camera" are transformations in camera coordinate
         double* pose = new double[] {odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
-                                     odom_loc.z(), odom_loc.x(), odom_loc.y()};
+                                     odom_loc.x(), odom_loc.y(), odom_loc.z()};
         // double* pose = new double[] {odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(),
         //                              odom_loc.x(), odom_loc.y(), odom_loc.z()};
         poses.push_back(pose);
         Affine3f odom_to_world = Affine3f::Identity();
-        odom_to_world.translate(Vector3f(odom_loc.z(), odom_loc.x(), odom_loc.y()));
-        odom_to_world.rotate(Quaternionf(odom_angle.w(), odom_angle.z(), odom_angle.x(), odom_angle.y()));
+        odom_to_world.translate(Vector3f(odom_loc.x(), odom_loc.y(), odom_loc.z()));
+        odom_to_world.rotate(Quaternionf(odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z()));
         Affine3f world_to_odom = odom_to_world.inverse();
         Quaternionf angle(world_to_odom.rotation());
         Vector3f loc(world_to_odom.translation());
@@ -172,8 +201,45 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
                                        loc.x(), loc.y(), loc.z()};
         cameras.push_back(camera);
 
+        // printf("\n------observeOdometry------------\n");
+        // printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+        // printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+
         has_new_pose_ = true; 
     // }
+}
+
+bool Slam::optimize() {
+    cout << "optimize" << endl;
+    Problem problem;
+    if (observations.size() < 1) {
+        printf("unexpected error: observations size shouldn't be 0\n");
+        exit(1);
+    }
+    for (size_t t = 0; t < cameras.size(); ++t) {
+        for (size_t i = 0; i < observations[0].size(); ++i) {
+            printf("measurement: %.2f, %.2f\n", observations[t][i].first.first, observations[t][i].first.second);
+            printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6]);
+            printf("points: %.2f,%.2f,%.2f\n", points[i][0], points[i][1], points[i][2]);
+            cout << endl;
+        }
+    }
+    for (size_t t = 0; t < cameras.size(); ++t) {
+        for (size_t i = 0; i < observations[0].size(); ++i) {
+            CostFunction* cost_function = ReprojectionError::Create(observations[t][i].first.first, observations[t][i].first.second);
+            problem.AddResidualBlock(cost_function, NULL, cameras[t], points[i]);
+        }
+    }
+    Solver::Options options;
+    options.max_num_iterations = 100;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
+    Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    std::cout << summary.FullReport() << "\n";
+    return (summary.termination_type == ceres::CONVERGENCE 
+         || summary.termination_type == ceres::USER_SUCCESS);
+    // return false;
 }
 
 bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport) {
@@ -199,7 +265,7 @@ bool Slam::optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fu
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = minimizer_progress_to_stdout;
     Solver::Summary summary;
-    double cost;
+    // double cost;
     // problem.Evaluate(Problem::EvaluateOptions(), &cost, nullptr, nullptr, nullptr);
     ceres::Solve(options, &problem, &summary);
     if (briefReport) std::cout << summary.FullReport() << "\n";
@@ -344,8 +410,8 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    // Vector3f world = world_to_camera.inverse() * Vector3f(X, Y, Z);
-    Vector3f world = world_to_camera * Vector3f(X, Y, Z);
+    Vector3f world = world_to_camera.inverse() * Vector3f(X, Y, Z);
+    // Vector3f world = world_to_camera * Vector3f(X, Y, Z);
     // cout << "world: " << world.x() << ", " << world.y() << ", " << world.z() << endl;
     if (0) {
         cout << endl;
@@ -357,10 +423,12 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
         cout << endl;
     }
     
-
-    X = world.z();
-    Y = -world.x();
-    Z = -world.y();
+    X = world.x();
+    Y = world.y();
+    Z = world.z();
+    // X = world.z();
+    // Y = -world.x();
+    // Z = -world.y();
 }
 
 bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
@@ -374,8 +442,8 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    Vector3f point = world_to_camera * Vector3f(-Y, -Z, X);
-    // Vector3f point = world_to_camera * Vector3f(X, Y, Z);
+    // Vector3f point = world_to_camera * Vector3f(-Y, -Z, X);
+    Vector3f point = world_to_camera * Vector3f(X, Y, Z);
     // cout << "point: " << point.x() << ", " << point.y() << ", " << point.z() << endl;
     // TODO: danger - fix dividing by small number
     float xp = point.x() / point.z();
