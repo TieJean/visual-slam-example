@@ -15,7 +15,7 @@ int main() {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
-        slam.init();
+        slam.init(0, 0);
         // camera z --> odom x
         // camera x --> odom -y
         // camera y --> odom -z
@@ -80,15 +80,15 @@ int main() {
     if (1) {
         const string DATA_DIR = "../data/vslam_set2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
-        const size_t N_POSE = 21;
-        const size_t N_LANDMARK = 2 + 5;
+        const size_t N_POSE = 6;
+        const size_t N_LANDMARK = 2 + 20;
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
         size_t line_num;
         string line;
         Slam slam;
-        vector<pair<pair<float, float>, float>> measurements;
+        vector<Measurement> measurements;
 
         fp.open(FEATURE_DIR + "features.txt");
         if (!fp.is_open()) {
@@ -104,7 +104,7 @@ int main() {
         fp.close();
 
         
-        slam.init();
+        slam.init(N_POSE, 99);
         for (size_t t = 1; t <= N_POSE; ++t) {
             
             if (t < 10) {
@@ -121,7 +121,6 @@ int main() {
 
             double pose[7]; 
             while ( getline(fp, line) ) {
-                cout << line << endl;
                 ++line_num;
                 if (line_num == 1) {continue;}
                 
@@ -141,12 +140,13 @@ int main() {
                 float measurement_x, measurement_y;
                 stringstream tokens(line);
                 tokens >> feature_idx >> measurement_x >> measurement_y;
-                measurements.emplace_back(pair<float, float>(measurement_x, measurement_y), (landmarks[feature_idx-1].x() - pose[6]) * 5000);
+                measurements.emplace_back(feature_idx, measurement_x, measurement_y, (landmarks[feature_idx-1].x() - pose[6]) * 5000);
                 // printf("%ld, %.2f, %.2f, %.2f\n", feature_idx, measurement_x, measurement_y, landmarks[feature_idx-1].x() - pose[6]);
             }
             slam.observeImage(measurements);
             fp.close();
         }
+        cout << "after while" << endl;
         slam.optimize();
         slam.displayLandmarks();
         slam.displayPoses();

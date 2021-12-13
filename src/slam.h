@@ -42,14 +42,36 @@ const size_t imgWidth = 640;
 const int imgEdge = 50;
 
 // camera, landmark, measurement idx
+class Measurement {
+public:
+    size_t landmarkIdx;
+    double measurementX;
+    double measurementY;
+    double depth;
+
+    Measurement() {}
+
+    Measurement(size_t landmarkIdx, double measurementX, double measurementY, double depth) {
+        this->landmarkIdx = landmarkIdx;
+        this->measurementX = measurementX;
+        this->measurementY = measurementY;
+        this->depth = depth;
+    }
+};
+
 class CLM {
 public:
     size_t poseIdx;
     size_t landmarkIdx;
-    double* measurement;
+    double measurement[2];
 
-    CLM() {
-        measurement = new double[measurementDim];
+    CLM() { }
+
+    CLM(size_t poseIdx, size_t landmarkIdx, double measurementX, double measurementY) {
+        this->poseIdx = poseIdx;
+        this->landmarkIdx = landmarkIdx;
+        this->measurement[0] = measurementX;
+        this->measurement[1] = measurementY;
     }
 
     ~CLM() { }
@@ -58,15 +80,9 @@ public:
 
     void setLandmarkIdx(size_t landmarkIdx) { this->landmarkIdx = landmarkIdx;  }
 
-    void setMeasurement(KeyPoint kp) {
-        this->measurement[0] = kp.pt.x;
-        this->measurement[1] = kp.pt.y;
-    }
-
-    void setMeasurement(double* measurement) {
-        for (size_t i = 0; i < measurementDim; ++i) {
-            this->measurement[i] = measurement[i];
-        }
+    void setMeasurement(double measurementX, double measurementY) {
+        this->measurement[0] = measurementX;
+        this->measurement[1] = measurementY;
     }
 
     bool operator==(const CLM& other) const {
@@ -101,11 +117,6 @@ struct ReprojectionError {
         T predicted_y = yp * T(fy) + T(cy);
         residuals[0] = predicted_x - T(observed_x);
         residuals[1] = predicted_y - T(observed_y);
-        // if (predicted_x >= T(imgWidth + imgEdge) || predicted_x < T(-imgEdge) || predicted_y >= T(imgHeight + imgEdge) || predicted_y < T(-imgEdge)) {
-            // printf("landmark outside range: \n");
-            // residuals[0] = T(0);
-            // residuals[1] = T(0);
-        // }
 
         return true;
     }
@@ -124,18 +135,14 @@ public:
     bool debug = false;
     Slam();
 
-    void init();
-    void observeImage(const vector<pair<pair<float, float>, float>>& observation); // for vslam dataset
-    void observeImage(const Mat& img, const Mat& depth);
+    void init(size_t N_POSE, size_t N_LANDMARK);
+    void observeImage(const vector<Measurement>& observation);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
     bool optimize(); // for vslam dataset
-    bool optimize(bool minimizer_progress_to_stdout, bool briefReport, bool fullReport);
-    void displayCLMS();
+    // void displayCLMS();
     void displayPoses();
     void displayLandmarks();
-    void imgToWorld_(double* camera, const int& x, const int& y, const int& z,
-                 float* X_ptr, float* Y_ptr, float* Z_ptr);
-    void imgToWorld_(double* camera, const int& u, const int& v, const Mat& depth,
+    void imgToWorld_(double* camera, const int& u, const int& v, const int& z,
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
     bool worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
                      float* x_ptr, float* y_ptr);
@@ -143,32 +150,17 @@ public:
     void dumpPosesToCSV(string path);
 
 private:
-    FeatureTracker feature_tracker;
     Vector3f prev_odom_loc_;
     Quaternionf prev_odom_angle_;
     bool has_new_pose_;
-    size_t t_start;
-    Matrix3f cameraIntrinsic;
-
-    vector<double*> poses;
-    vector<double*> landmarks;
 
     vector<double*> cameras;
     vector<double*> points;
     vector<unsigned short> point_cnts;
+    vector<vector<Measurement>> observations; // observations[i]: observation made at i-th pose
     vector<CLM> clms;
-    vector<pair<vector<KeyPoint>, Mat>> features;
-    vector<Mat> depths; // TODO: optimize space
-
-    // for vslam dataset
-    vector<vector<pair<pair<float, float>, float>>> observations;
 
     int clmsFind_(const CLM& clm);
-    Quaternionf getQuaternionDelta_(const Quaternionf& a1, const Quaternionf& a2);
-    float getDist_(const Vector3f& odom1, const Vector3f& odom2);
-    
-    // bool wolrdToImg_(double* camera, const float& X, const float& Y, const float& Z,
-    //                  float* x_ptr, float* y_ptr);
     
 
 };
