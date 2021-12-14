@@ -67,7 +67,7 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                     clms.emplace_back(t, landmarkIdx, prev_observation[idx_prev].measurementX,  prev_observation[idx_prev].measurementY);
                     clms.emplace_back(T, landmarkIdx,      observation[idx_prev].measurementX,       observation[idx_prev].measurementY);
                 } else {
-                    // points[landmarkIdx][0] = (points[landmarkIdx][0] * point_cnts[landmarkIdx] + curr_pred[0]) / (++point_cnts[landmarkIdx]); ??
+                    // TODO: points[landmarkIdx][0] = (points[landmarkIdx][0] * point_cnts[landmarkIdx] + curr_pred[0]) / (++point_cnts[landmarkIdx]); 
                     points[landmarkIdx][0] = (points[landmarkIdx][0] * point_cnts[landmarkIdx] + pred[0]) / (point_cnts[landmarkIdx] + 1);
                     points[landmarkIdx][1] = (points[landmarkIdx][1] * point_cnts[landmarkIdx] + pred[1]) / (point_cnts[landmarkIdx] + 1);
                     points[landmarkIdx][2] = (points[landmarkIdx][2] * point_cnts[landmarkIdx] + pred[2]) / (point_cnts[landmarkIdx] + 1);
@@ -120,12 +120,40 @@ bool Slam::optimize() {
         printf("unexpected error: observations size shouldn't be 0\n");
         exit(1);
     }
+
+    // debug start
     for (size_t i = 0; i < clms.size(); ++i) {
         printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
         printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
         printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
         cout << endl;
     }
+    vector<vector<pair<double, double>>> debug;
+    debug.resize(6);
+    for (size_t i = 0; i < 6; ++i) { debug[i].resize(99); }
+    for (size_t i = 0; i < 6; ++i) {
+        for (size_t j = 0; j < 99; ++j) {
+            debug[i][j] = pair<double, double>(0,0);
+        }
+    }
+    for (size_t i = 0; i < clms.size(); ++i) {
+        debug[clms[i].poseIdx][clms[i].landmarkIdx] = pair<double, double>(clms[i].measurement[0], clms[i].measurement[1]);
+    }
+    ofstream fp;
+    for (size_t i = 0; i < 6; ++i) {
+        fp.open("../data/results/" + to_string(i+1) + ".csv", ios::trunc);
+        if (!fp.is_open()) {
+            printf("error in opening file\n");
+            exit(1);
+        }
+        for (size_t j = 0; j < 99; ++j) {
+            if (debug[i][j].first == 0 && debug[i][j].second == 0) { continue; }
+            fp << j << "," << debug[i][j].first << "," << debug[i][j].second << endl;
+        }
+        fp.close();
+    }
+    // end debug
+
     for (size_t i = 0; i < clms.size(); ++i) {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
         problem.AddResidualBlock(cost_function, new HuberLoss(huberLossScale), cameras[clms[i].poseIdx], points[clms[i].landmarkIdx]);

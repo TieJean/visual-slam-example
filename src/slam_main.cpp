@@ -16,7 +16,7 @@ using namespace Eigen;
  * 3) storage efficiency
  */
 
-int main() {
+int main(int argc, char** argv) {
     if (0) {
         // pose: camera_to_world
         // camera: world_to_camera
@@ -86,8 +86,8 @@ int main() {
     if (1) {
         const string DATA_DIR = "../data/vslam_set2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
-        const size_t N_POSE = 6;
-        const size_t N_LANDMARK = 2 + 99;
+        size_t N_POSE = stoi(argv[1]);
+        size_t N_LANDMARK = 2 + stoi(argv[2]);
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
@@ -152,7 +152,6 @@ int main() {
             slam.observeImage(measurements);
             fp.close();
         }
-        cout << "after while" << endl;
         slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
         slam.optimize();
         // slam.displayLandmarks();
