@@ -128,7 +128,7 @@ bool Slam::optimize() {
     // }
     for (size_t i = 0; i < clms.size(); ++i) {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
-        problem.AddResidualBlock(cost_function, NULL, cameras[clms[i].poseIdx], points[clms[i].landmarkIdx]);
+        problem.AddResidualBlock(cost_function, new HuberLoss(huberLossScale), cameras[clms[i].poseIdx], points[clms[i].landmarkIdx]);
     }
     Solver::Options options;
     options.max_num_iterations = 100;

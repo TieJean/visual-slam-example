@@ -133,6 +133,7 @@ class Slam {
 
 public: 
     bool debug = false;
+    float huberLossScale = 1;
     Slam();
 
     void init(size_t N_POSE, size_t N_LANDMARK);
