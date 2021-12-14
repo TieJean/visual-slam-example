@@ -9,6 +9,12 @@ using namespace std;
 using namespace slam;
 using namespace Eigen;
 
+/**
+ * TODO: change these back after finishing debugging
+ * 1) free memory
+ * 2) hashing 
+ * 3) storage efficiency
+ */
 
 int main() {
     if (0) {
@@ -81,7 +87,7 @@ int main() {
         const string DATA_DIR = "../data/vslam_set2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         const size_t N_POSE = 6;
-        const size_t N_LANDMARK = 2 + 20;
+        const size_t N_LANDMARK = 2 + 99;
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
@@ -147,9 +153,10 @@ int main() {
             fp.close();
         }
         cout << "after while" << endl;
+        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
         slam.optimize();
-        slam.displayLandmarks();
-        slam.displayPoses();
+        // slam.displayLandmarks();
+        // slam.displayPoses();
         slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks.csv");
 
     }
