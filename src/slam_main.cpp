@@ -51,7 +51,10 @@ int main(int argc, char** argv) {
         Vector3f loc2(world_to_camera.translation());
         double* camera2 = new double[] {angle2.w(), angle2.x(), angle2.y(), angle2.z(),
                                         loc2.x(), loc2.y(), loc2.z()};
-        
+
+        printf("camera2: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", camera2[0], camera2[1], camera2[2], camera2[3], camera2[4], camera2[5], camera2[6]);
+        printf("camera1: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", camera1[0], camera1[1], camera1[2], camera1[3], camera1[4], camera1[5], camera1[6]);
+
         float X, Y, Z;
         float x, y, z;
         float x_pred, y_pred;
@@ -82,7 +85,7 @@ int main(int argc, char** argv) {
 
     }
 
-    if (0) {
+    if (1) {
         const string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
@@ -141,7 +144,7 @@ int main(int argc, char** argv) {
                     // pose: qw  qx  qy qz  x  y z (camera coordinate)
                     // pose: qw -qy -qz qx -y -z x (world coordinate) 
                     tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
-                    pose[0] = -pose[0]; // TODO: is this correct??
+                    // pose[0] = -pose[0]; // TODO: is this correct??
                     pose[1] = -pose[1];
                     pose[2] = -pose[2];
                     pose[4] = -pose[4];
@@ -161,13 +164,16 @@ int main(int argc, char** argv) {
                 // |(|z2 - z1| - |(x2 - x1)*tan(theta)|) * cos(theta)| - not sure about signs and angles; need to check
                 // landmarks are in world coordinate
                 float epsilon = 0.01;
-                double depth = landmarks[feature_idx-1].x() - pose[6];;
-                cout << "tan: " << tan(pose[0]) << endl;
+                double depth = landmarks[feature_idx-1].x() - pose[6];
+                AngleAxisf angleAxis(Quaternionf(-pose[0], pose[1], pose[2], pose[3]));
+                cout << angleAxis.angle() << endl;
+                float angle = angleAxis.angle();
+                cout << "tan: " << tan(angle) << endl;
                 if ( abs(tan(pose[0])) > epsilon) {
                     cout << "here" << endl;
-                    depth -= abs( (-landmarks[feature_idx-1].y()-pose[4])/tan(pose[0]) );
+                    depth -= abs( (-landmarks[feature_idx-1].y()-pose[4])/  tan(angle) );
                     depth = abs(depth * cos(pose[0]));
-                    depth += abs( (-landmarks[feature_idx-1].y()-pose[4]) / sin(pose[0]) ); //  cos(pose[0]) != 0 if camera can see this landmark
+                    depth += abs( (-landmarks[feature_idx-1].y()-pose[4]) / sin(angle) ); //  cos(pose[0]) != 0 if camera can see this landmark
                 }
                 measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
                 printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);

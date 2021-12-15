@@ -58,6 +58,16 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                                         observation[idx].measurementY,
                                         observation[idx].depth,
                                         &pred[0], &pred[1], &pred[2]);
+                cout << "observeImage" << endl;
+                printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", 
+                        cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6], 
+                        prev_observation[idx_prev].measurementX, prev_observation[idx_prev].measurementY, prev_observation[idx_prev].depth,
+                        prev_pred[0], prev_pred[1], prev_pred[2] );
+                printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", 
+                        cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6], 
+                        observation[idx_prev].measurementX, observation[idx_prev].measurementY, observation[idx_prev].depth,
+                        pred[0], pred[1], pred[2] );
+                cout << endl;
                 if ( point_cnts[landmarkIdx]  == 0 ) {
                     double* point = new double[]{ (prev_pred[0] + pred[0]) / 2, 
                                                   (prev_pred[1] + pred[1]) / 2,
@@ -122,12 +132,12 @@ bool Slam::optimize() {
     }
 
     // debug start
-    for (size_t i = 0; i < clms.size(); ++i) {
-        printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
-        printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
-        printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
-        cout << endl;
-    }
+    // for (size_t i = 0; i < clms.size(); ++i) {
+    //     printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
+    //     printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
+    //     printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
+    //     cout << endl;
+    // }
     vector<vector<pair<double, double>>> debug;
     debug.resize(6);
     for (size_t i = 0; i < 6; ++i) { debug[i].resize(99); }
