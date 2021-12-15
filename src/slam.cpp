@@ -122,36 +122,36 @@ bool Slam::optimize() {
     }
 
     // debug start
-    // for (size_t i = 0; i < clms.size(); ++i) {
-    //     printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
-    //     printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
-    //     printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
-    //     cout << endl;
-    // }
-    // vector<vector<pair<double, double>>> debug;
-    // debug.resize(6);
-    // for (size_t i = 0; i < 6; ++i) { debug[i].resize(99); }
-    // for (size_t i = 0; i < 6; ++i) {
-    //     for (size_t j = 0; j < 99; ++j) {
-    //         debug[i][j] = pair<double, double>(0,0);
-    //     }
-    // }
-    // for (size_t i = 0; i < clms.size(); ++i) {
-    //     debug[clms[i].poseIdx][clms[i].landmarkIdx] = pair<double, double>(clms[i].measurement[0], clms[i].measurement[1]);
-    // }
-    // ofstream fp;
-    // for (size_t i = 0; i < 6; ++i) {
-    //     fp.open("../data/results/" + to_string(i+1) + ".csv", ios::trunc);
-    //     if (!fp.is_open()) {
-    //         printf("error in opening file\n");
-    //         exit(1);
-    //     }
-    //     for (size_t j = 0; j < 99; ++j) {
-    //         if (debug[i][j].first == 0 && debug[i][j].second == 0) { continue; }
-    //         fp << j << "," << debug[i][j].first << "," << debug[i][j].second << endl;
-    //     }
-    //     fp.close();
-    // }
+    for (size_t i = 0; i < clms.size(); ++i) {
+        printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
+        printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
+        printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
+        cout << endl;
+    }
+    vector<vector<pair<double, double>>> debug;
+    debug.resize(6);
+    for (size_t i = 0; i < 6; ++i) { debug[i].resize(99); }
+    for (size_t i = 0; i < 6; ++i) {
+        for (size_t j = 0; j < 99; ++j) {
+            debug[i][j] = pair<double, double>(0,0);
+        }
+    }
+    for (size_t i = 0; i < clms.size(); ++i) {
+        debug[clms[i].poseIdx][clms[i].landmarkIdx] = pair<double, double>(clms[i].measurement[0], clms[i].measurement[1]);
+    }
+    ofstream fp;
+    for (size_t i = 0; i < 6; ++i) {
+        fp.open("../data/results/" + to_string(i+1) + ".csv", ios::trunc);
+        if (!fp.is_open()) {
+            printf("error in opening file\n");
+            exit(1);
+        }
+        for (size_t j = 0; j < 99; ++j) {
+            if (debug[i][j].first == 0 && debug[i][j].second == 0) { continue; }
+            fp << j << "," << debug[i][j].first << "," << debug[i][j].second << endl;
+        }
+        fp.close();
+    }
     cout << "start optimize" << endl;
     // end debug
 

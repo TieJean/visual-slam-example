@@ -17,7 +17,7 @@ using namespace Eigen;
  */
 
 int main(int argc, char** argv) {
-    if (0) {
+    if (1) {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
@@ -25,13 +25,12 @@ int main(int argc, char** argv) {
         // camera z --> odom x
         // camera x --> odom -y
         // camera y --> odom -z
-        // double pose1[] = {-20.000000 0.000000 0.000000 0.000000 0.000000 0.000000 1.000000};
-        // double pose2[] = {-18.500000 0.000000 0.000000 0.000000 0.000000 0.000000 1.000000};
-
+        // 0.250000 0.247404 0.000000 0.000000 0.000000 0.375379 0.926872
+        // 0.750000 0.681639 0.000000 0.000000 0.000000 0.310614 0.950536
         //                0  1    2   3   4         5         6
         //                qw -qy -qz  qx -y        -z         x
-        double pose1[] = {1, 0,   0,  0,  0.000000, 0.000000, -20.000000};
-        double pose2[] = {1, 0,   0,  0,  0.000000, 0.000000, -18.500000};
+        double pose1[] = {0.926872, 0.000000, -0.375379, 0.000000,  -0.247404, 0.000000, 0.250000}; // 284.517127 427.718032
+        double pose2[] = {0.950536, 0.000000, -0.310614, 0.000000,  -0.681639, 0.000000, 0.750000}; // 224.271992 443.602705
         // double pose1[] = {1, 0, 0, 0, -20.000000, 0.000000, 0};
         // double pose2[] = {1, 0, 0, 0, -18.500000, 0.000000, 0};
 
@@ -56,35 +55,35 @@ int main(int argc, char** argv) {
         float X, Y, Z;
         float x, y, z;
         float x_pred, y_pred;
-        x = 534.015111; 
-        y = 209.523739;
-        z = (18.883421 + 18.5) * 5000;
+        x = 224.271992; 
+        y = 443.602705; // observation made by camera2
+        z = (12) * 5000;
         slam.imgToWorld_(camera2, x, y, z, &X, &Y, &Z);
         printf("------------\n");
         printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
         slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
-        printf("camera2 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        printf("camera2 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred);  // 224.271992 443.602705
         slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
-        printf("camera1 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        printf("camera1 measure_pred (estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 284.517127 427.718032
         
         printf("------------\n");
         X = 18.883421; // world coordinate
         Y = -20.269062;
         Z = 2.886363;
 
-        X = 20.269062; // camera coordinate
-        Y = -2.886363;
-        Z = 18.883421;
+        X = -9.147064; // camera coordinate
+        Y = -5.498642;
+        Z = 7.941555;
         slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
-        printf("camera2 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        printf("camera2 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); 
         slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
-        printf("camera1 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); // 528.511092 210.307524
+        printf("camera1 measure_pred (groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); 
 
 
     }
 
-    if (1) {
-        const string DATA_DIR = "../data/vslam_set2/";
+    if (0) {
+        const string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
         size_t N_LANDMARK = 2 + stoi(argv[2]);
@@ -98,7 +97,7 @@ int main(int argc, char** argv) {
 
         fp.open(FEATURE_DIR + "features.txt");
         if (!fp.is_open()) {
-            printf("error in opening file\n");
+            printf("error in opening file %s\n", (FEATURE_DIR + "features.txt").c_str());
             exit(1);
         }
         while ( getline(fp, line) ) {
@@ -110,18 +109,25 @@ int main(int argc, char** argv) {
         fp.close();
 
         
-        slam.init(N_POSE, 99);
+        slam.init(N_POSE, 1000);
         for (size_t t = 1; t <= N_POSE; ++t) {
             
             if (t < 10) {
                 fp.open(DATA_DIR + "00000" + to_string(t) + ".txt");
+                if (!fp.is_open()) {
+                    printf("error in opening file %s\n", (DATA_DIR + "00000" + to_string(t) + ".txt").c_str());
+                    printf("error in opening file\n");
+                    exit(1);
+                }
             } else {
                 fp.open(DATA_DIR + "0000"  + to_string(t) + ".txt");
+                if (!fp.is_open()) {
+                    printf("error in opening file %s\n", (DATA_DIR + "0000"  + to_string(t) + ".txt").c_str());
+                    printf("error in opening file\n");
+                    exit(1);
+                }
             }
-            if (!fp.is_open()) {
-                printf("error in opening file\n");
-                exit(1);
-            }
+            
             line_num = 0;
             measurements.clear();
 
@@ -132,7 +138,10 @@ int main(int argc, char** argv) {
                 
                 if (line_num == 2) { // pose
                     stringstream tokens(line);
+                    // pose: qw  qx  qy qz  x  y z (camera coordinate)
+                    // pose: qw -qy -qz qx -y -z x (world coordinate) 
                     tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
+                    pose[0] = -pose[0]; // TODO: is this correct??
                     pose[1] = -pose[1];
                     pose[2] = -pose[2];
                     pose[4] = -pose[4];
@@ -141,22 +150,39 @@ int main(int argc, char** argv) {
                     // printf("tokens: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
                     continue;
                 }
-                if (line_num > N_LANDMARK) {break;}
                 size_t feature_idx;
                 float measurement_x, measurement_y;
                 stringstream tokens(line);
                 tokens >> feature_idx >> measurement_x >> measurement_y;
-                measurements.emplace_back(feature_idx, measurement_x, measurement_y, (landmarks[feature_idx-1].x() - pose[6]) * 5000);
-                // printf("%ld, %.2f, %.2f, %.2f\n", feature_idx, measurement_x, measurement_y, landmarks[feature_idx-1].x() - pose[6]);
+                if (feature_idx > N_LANDMARK) {break;}
+                // camera z --> odom x
+                // camera x --> odom -y
+                // camera y --> odom -z
+                // |(|z2 - z1| - |(x2 - x1)*tan(theta)|) * cos(theta)| - not sure about signs and angles; need to check
+                // landmarks are in world coordinate
+                float epsilon = 0.01;
+                double depth = landmarks[feature_idx-1].x() - pose[6];;
+                cout << "tan: " << tan(pose[0]) << endl;
+                if ( abs(tan(pose[0])) > epsilon) {
+                    cout << "here" << endl;
+                    depth -= abs( (-landmarks[feature_idx-1].y()-pose[4])/tan(pose[0]) );
+                    depth = abs(depth * cos(pose[0]));
+                    depth += abs( (-landmarks[feature_idx-1].y()-pose[4]) / sin(pose[0]) ); //  cos(pose[0]) != 0 if camera can see this landmark
+                }
+                measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
+                printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
+                printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                cout << endl;
             }
             slam.observeImage(measurements);
             fp.close();
         }
-        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
+        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
         slam.optimize();
         // slam.displayLandmarks();
         // slam.displayPoses();
-        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks.csv");
+        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
 
     }
     
