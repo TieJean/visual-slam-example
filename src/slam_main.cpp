@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         float x_pred, y_pred;
         x = 224.271992; 
         y = 443.602705; // observation made by camera2
-        z = 12 * 5000;
+        z = 11.07 * 5000;
         slam.imgToWorld_(camera2, x, y, z, &X, &Y, &Z);
         printf("------------\n");
         printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
         Z = 2.886363;
 
         X = -9.147064; // camera coordinate
-        Y = -5.498642;
+        Y = 5.498642;
         Z = 7.941555;
         slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
         printf("camera2 measure_pred (predicted by groundtruth landmark): %.2f|%.2f\n", x_pred, y_pred); 
