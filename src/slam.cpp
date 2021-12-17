@@ -20,9 +20,8 @@ Slam::Slam() :
     has_new_pose_(false) {
     }
 
-void Slam::init(size_t N_POSE, size_t N_LANDMARK) {
-    // TODO: clear all vector
-    points.resize(N_LANDMARK);
+void Slam::init() {
+    
 }
 
 void Slam::observeImage(const Mat& img, const Mat& depth) {
@@ -51,7 +50,7 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
         des_prev   = observations[t].descriptors;
         depth_prev = observations[t].depth;
         // prev - train, curr - query
-        feature_tracker.match(des_prev, des_curr, &matches);
+        feature_tracker.match(des_curr, des_prev, &matches);
 
         for (auto match : matches) {
             clm_prev.setPoseIdx(t);
@@ -84,6 +83,8 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                     !worldToImg_(cameras[t], curr_pred[0], curr_pred[1], curr_pred[2], &predicted_x, &predicted_y) ) { continue; }
                 clm_curr.setLandmarkIdx(points.size());
                 clm_prev.setLandmarkIdx(points.size());
+                clms.push_back(clm_curr);
+                clms.push_back(clm_prev);
                 double* landmark = new double[3];
                 for (size_t i = 0; i < landmarkDim; ++i) {
                     landmark[i] = (prev_pred[i] + curr_pred[i]) / 2; // TODO: this may not be valid
@@ -91,6 +92,7 @@ void Slam::observeImage(const Mat& img, const Mat& depth) {
                 points.emplace_back(landmark, 2);
             }
         }
+
 
     }
 }
@@ -118,9 +120,9 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
                                        loc.x(), loc.y(), loc.z()}; // TODO: free me
         cameras.push_back(camera);
 
-        // printf("\n------observeOdometry------------\n");
-        // printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-        // printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+        printf("------observeOdometry------------\n");
+        printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(), odom_loc.x(), odom_loc.y(), odom_loc.z());
+        printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
 
         has_new_pose_ = true; 
     // }
@@ -184,17 +186,17 @@ bool Slam::optimize() {
     // return false;
 }
 
-// void Slam::displayCLMS() {
-//     printf("-------display inputs---------\n");
-//     for (size_t i = 0; i < clms.size(); ++i) {
-//         printf("%ld:         %ld | %ld\n", i, clms[i].poseIdx, clms[i].landmarkIdx);
-//         printf("camera:      %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
-//             poses[clms[i].poseIdx][0], poses[clms[i].poseIdx][1], poses[clms[i].poseIdx][2], poses[clms[i].poseIdx][3],
-//             poses[clms[i].poseIdx][4], poses[clms[i].poseIdx][5], poses[clms[i].poseIdx][6]);
-//         printf("landmark:    %.2f | %.2f | %.2f \n", points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
-//         printf("measurement: %.2f | %.2f \n\n", clms[i].measurement[0], clms[i].measurement[1]);
-//     }
-// }
+void Slam::displayCLMS() {
+    printf("-------display inputs---------\n");
+    for (size_t i = 0; i < clms.size(); ++i) {
+        printf("%ld:         %ld | %ld\n", i, clms[i].poseIdx, clms[i].landmarkIdx);
+        printf("camera:      %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3],
+            cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
+        printf("landmark:    %.2f | %.2f | %.2f \n", points[clms[i].landmarkIdx].first[0], points[clms[i].landmarkIdx].first[1], points[clms[i].landmarkIdx].first[2]);
+        printf("measurement: %.2f | %.2f \n\n", clms[i].measurement[0], clms[i].measurement[1]);
+    }
+}
 
 bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
     for (auto v : vec) {

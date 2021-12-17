@@ -139,11 +139,11 @@ public:
     float huberLossScale = 1;
     Slam();
 
-    void init(size_t N_POSE, size_t N_LANDMARK);
+    void init();
     void observeImage(const Mat& img, const Mat& depth);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
     bool optimize(); // for vslam dataset
-    // void displayCLMS();
+    void displayCLMS();
     void displayPoses();
     void displayLandmarks();
     void imgToWorld_(double* camera, const int x, const int y, const Mat& depth,

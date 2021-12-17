@@ -16,24 +16,58 @@ using namespace Eigen;
  * 3) storage efficiency
  */
 
+class Odometry {
+public:
+    Vector3f loc;
+    Quaternionf angle;
+
+    Odometry() {}
+    Odometry(Vector3f loc, Quaternionf angle) {
+        this->loc = loc;
+        this->angle = angle;
+    }
+
+};
+
+class Input {
+public:
+    string odomTimestamp;
+    string imgTimestamp;
+    string depthTimestamp;
+    Odometry odom;
+    Mat img;
+    Mat depth;
+
+    Input() {}
+    Input(string odomTimestamp, Odometry odom, string imgTimestamp, Mat img, string depthTimestamp, Mat depth) {
+        this->odomTimestamp = odomTimestamp;
+        this->imgTimestamp = imgTimestamp;
+        this->depthTimestamp = depthTimestamp;
+        this->odom = odom;
+        this->img = img;
+        this->depth = depth;
+    }
+
+    void print() {
+        cout << "timestamps: " << odomTimestamp << ", " << imgTimestamp << ", " << depthTimestamp << endl;
+    }
+};
+
 int main(int argc, char** argv) {
     if (0) {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
-        slam.init(0, 0);
+        slam.init();
         // camera z --> odom x
         // camera x --> odom -y
         // camera y --> odom -z
-        // double pose1[] = {-20.000000 0.000000 0.000000 0.000000 0.000000 0.000000 1.000000};
-        // double pose2[] = {-18.500000 0.000000 0.000000 0.000000 0.000000 0.000000 1.000000};
-
         //                0  1    2   3   4         5         6
         //                qw -qy -qz  qx -y        -z         x
-        double pose1[] = {1, 0,   0,  0,  0.000000, 0.000000, -20.000000};
-        double pose2[] = {1, 0,   0,  0,  0.000000, 0.000000, -18.500000};
-        // double pose1[] = {1, 0, 0, 0, -20.000000, 0.000000, 0};
-        // double pose2[] = {1, 0, 0, 0, -18.500000, 0.000000, 0};
+        double pose1[] = {-0.1614, -0.7167, 0.6511, 0.1906, 2.3802, -0.5899, -2.2583};
+        double pose2[] = {-0.1929, -0.7059, 0.6424, 0.2276, 2.3775, 0.5895, -2.2640};
+        // -2.2583 -2.3802 0.5899 0.1906 0.7167 -0.6511 -0.1614
+        // -2.2640 -2.3775 0.5895 0.2276 0.7059 -0.6424 -0.1929
 
         Affine3f camera_to_world, world_to_camera;
         camera_to_world = Affine3f::Identity();
@@ -84,75 +118,134 @@ int main(int argc, char** argv) {
     }
 
     if (1) {
-        // vector<pair<>>
-        // const string DATA_DIR = "../data/vslam_set2/";
-        // const string FEATURE_DIR = DATA_DIR + "features/";
-        // size_t N_POSE = stoi(argv[1]);
-        // size_t N_LANDMARK = 2 + stoi(argv[2]);
+        const string DATA_DIR   = "../data/";
+        const string ODOM_PATH  = DATA_DIR + "groundtruth.txt";
+        const string DEPTH_PATH = DATA_DIR + "depth.txt";
+        const string IMG_PATH   = DATA_DIR + "rgb.txt";
+        const string DEPTH_DIR  = DATA_DIR + "depth/";
+        const string IMG_DIR    = DATA_DIR + "rgb/";
+        const size_t ODOM_DOWNSAMPLE_RATE = 1;
+        const size_t OBS_DOWNSAMPLE_RATE  = 15;
+        const size_t INPUT_DOWNSAMPLE_RATE = 1;
 
-        // vector<Vector3f> landmarks; // store landmark positions in world coordinate
-        // ifstream fp;
-        // size_t line_num;
-        // string line;
-        // Slam slam;
-        // vector<Measurement> measurements;
+        vector<pair<string, Odometry>> odometries;
+        vector<pair<string, Mat>> images;
+        vector<pair<string, Mat>> depths;
+        ifstream fp;
+        string line;
+        string timestamp;
+        size_t lineNum;
 
-        // fp.open(FEATURE_DIR + "features.txt");
-        // if (!fp.is_open()) {
-        //     printf("error in opening file\n");
-        //     exit(1);
-        // }
-        // while ( getline(fp, line) ) {
-        //     float tmp[4];
-        //     stringstream tokens(line);
-        //     tokens >> tmp[0] >> tmp[1] >> tmp[2] >> tmp[3];
-        //     landmarks.emplace_back(tmp[1], tmp[2], tmp[3]);
-        // }
-        // fp.close();
+        fp.open(ODOM_PATH);
+        if (!fp.is_open()) {
+            printf("error in opening file %s\n", ODOM_PATH.c_str());
+            exit(1);
+        }
 
+        // read odometry
+        lineNum = 0;
+        while ( getline(fp, line) ) {
+            stringstream tokens(line);
+            tokens >> timestamp;
+            if (timestamp.compare("#") == 0) { continue; } // ignore comments
+            ++lineNum;
+            if (lineNum % ODOM_DOWNSAMPLE_RATE != 0) { continue; }
+            float tmp[7];
+            for (size_t i = 0; i < poseDim; ++i) { tokens >> tmp[i]; }
+            Affine3f extrinsicCamera = Affine3f::Identity();
+            extrinsicCamera.translate(Vector3f(0,0,0));
+            extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+            Vector3f translation(extrinsicCamera * Vector3f(tmp[0], tmp[1], tmp[2]));
+            Quaternionf rotation((extrinsicCamera * Quaternionf(tmp[6], tmp[3], tmp[4], tmp[5])).rotation());
+            Odometry odom(translation, rotation);
+            odometries.emplace_back(timestamp, odom);
+        }
+        cout << "number of odometries: " <<  odometries.size() << endl;
+        fp.close();
+
+        // read image
+        lineNum = 0;
+        fp.open(IMG_PATH);
+        if (!fp.is_open()) {
+            printf("error in opening file %s\n", IMG_PATH.c_str());
+            exit(1);
+        }
+        while( getline(fp, line) ) {
+            stringstream tokens(line);
+            tokens >> timestamp;
+            if (timestamp.compare("#") == 0) { continue; } // ignore comments
+            ++lineNum;
+            if (lineNum % OBS_DOWNSAMPLE_RATE != 0) { continue; }
+            string path;
+            tokens >> path;
+            Mat img = imread(DATA_DIR + path, IMREAD_UNCHANGED);
+            if (img.data == NULL) {
+                perror("cannot open image files");
+                exit(1);
+            }
+            images.emplace_back(timestamp, img);
+        }
+        cout << "number of images: " <<  images.size() << endl;
+        fp.close();
+
+        // read depth
+        lineNum = 0;
+        fp.open(IMG_PATH);
+        if (!fp.is_open()) {
+            printf("error in opening file %s\n", IMG_PATH.c_str());
+            exit(1);
+        }
+        while( getline(fp, line) ) {
+            stringstream tokens(line);
+            tokens >> timestamp;
+            if (timestamp.compare("#") == 0) { continue; } // ignore comments
+            ++lineNum;
+            if (lineNum % OBS_DOWNSAMPLE_RATE != 0) { continue; }
+            string path;
+            tokens >> path;
+            Mat depth = imread(DATA_DIR + path, IMREAD_UNCHANGED);
+            if (depth.data == NULL) {
+                perror("cannot open image files");
+                exit(1);
+            }
+            depths.emplace_back(timestamp, depth);
+        }
+        cout << "number of depths: " <<  depths.size() << endl;
+        fp.close();
+
+        vector<Input> inputs;
+        size_t odomIdx, depthIdx;
+        odomIdx  = 0;
+        depthIdx = 0;
+        for (size_t imgIdx = 0; imgIdx < images.size(); ++imgIdx) {
+            while (odomIdx  < odometries.size() && odometries[odomIdx].first < images[imgIdx].first) { ++odomIdx; }
+            while (depthIdx < depths.size()     && depths[depthIdx].first    < images[imgIdx].first) { ++depthIdx; }
+            inputs.emplace_back(odometries[odomIdx].first, odometries[odomIdx].second, 
+                                images[imgIdx].first,        images[imgIdx].second,
+                                depths[depthIdx].first,    depths[depthIdx].second);
+        }
+
+        if (0) {
+            for (auto input : inputs) { input.print(); }
+        }
         
-        // slam.init(N_POSE, 99);
-        // for (size_t t = 1; t <= N_POSE; ++t) {
-            
-        //     if (t < 10) {
-        //         fp.open(DATA_DIR + "00000" + to_string(t) + ".txt");
-        //     } else {
-        //         fp.open(DATA_DIR + "0000"  + to_string(t) + ".txt");
-        //     }
-        //     if (!fp.is_open()) {
-        //         printf("error in opening file\n");
-        //         exit(1);
-        //     }
-        //     line_num = 0;
-        //     measurements.clear();
 
-        //     double pose[7]; 
-        //     while ( getline(fp, line) ) {
-        //         ++line_num;
-        //         if (line_num == 1) {continue;}
-                
-        //         if (line_num == 2) { // pose
-        //             stringstream tokens(line);
-        //             tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
-        //             pose[1] = -pose[1];
-        //             pose[2] = -pose[2];
-        //             pose[4] = -pose[4];
-        //             pose[5] = -pose[5];
-        //             slam.observeOdometry(Vector3f(pose[4], pose[5], pose[6]), Quaternionf(pose[0], pose[1], pose[2], pose[3]));
-        //             // printf("tokens: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-        //             continue;
-        //         }
-        //         if (line_num > N_LANDMARK) {break;}
-        //         size_t feature_idx;
-        //         float measurement_x, measurement_y;
-        //         stringstream tokens(line);
-        //         tokens >> feature_idx >> measurement_x >> measurement_y;
-        //         measurements.emplace_back(feature_idx, measurement_x, measurement_y, (landmarks[feature_idx-1].x() - pose[6]) * 5000);
-        //         // printf("%ld, %.2f, %.2f, %.2f\n", feature_idx, measurement_x, measurement_y, landmarks[feature_idx-1].x() - pose[6]);
-        //     }
-        //     slam.observeImage(measurements);
-        //     fp.close();
-        // }
+        Slam slam;
+        size_t n_pose = argc > 1 ? stoi(argv[1]) : 5;
+        for (size_t t = 0; t < n_pose; ++t) {
+            inputs[t].print();
+            slam.observeOdometry(inputs[t].odom.loc, inputs[t].odom.angle);
+            cout << "before observe Image" << endl;
+            slam.observeImage(inputs[t].img, inputs[t].depth);
+            cout << "after observe Image" << endl;
+        }
+        slam.displayCLMS();
+        slam.dumpLandmarksToCSV("../data/results/tum-landmarks-initEstimate.csv");
+        slam.optimize();
+        slam.dumpLandmarksToCSV("../data/results/tum-landmarks.csv");
+        slam.displayPoses();
+
+
         // slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
         // slam.optimize();
         // // slam.displayLandmarks();
