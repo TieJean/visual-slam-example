@@ -136,6 +136,10 @@ int main(int argc, char** argv) {
         string timestamp;
         size_t lineNum;
 
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+
         fp.open(ODOM_PATH);
         if (!fp.is_open()) {
             printf("error in opening file %s\n", ODOM_PATH.c_str());
@@ -152,9 +156,6 @@ int main(int argc, char** argv) {
             if (lineNum % ODOM_DOWNSAMPLE_RATE != 0) { continue; }
             float tmp[7];
             for (size_t i = 0; i < poseDim; ++i) { tokens >> tmp[i]; }
-            Affine3f extrinsicCamera = Affine3f::Identity();
-            extrinsicCamera.translate(Vector3f(0,0,0));
-            extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
             Vector3f translation(extrinsicCamera * Vector3f(tmp[0], tmp[1], tmp[2]));
             Quaternionf rotation((extrinsicCamera * Quaternionf(tmp[6], tmp[3], tmp[4], tmp[5])).rotation());
             Odometry odom(translation, rotation);
@@ -235,14 +236,23 @@ int main(int argc, char** argv) {
         for (size_t t = 0; t < n_pose; ++t) {
             inputs[t].print();
             slam.observeOdometry(inputs[t].odom.loc, inputs[t].odom.angle);
-            cout << "before observe Image" << endl;
             slam.observeImage(inputs[t].img, inputs[t].depth);
-            cout << "after observe Image" << endl;
         }
         slam.displayCLMS();
         slam.dumpLandmarksToCSV("../data/results/tum-landmarks-initEstimate.csv");
         slam.optimize();
         slam.dumpLandmarksToCSV("../data/results/tum-landmarks.csv");
+        printf("----------poses (before optimization) ----------\n");
+        for (size_t t = 0; t < n_pose; ++t) {
+            Affine3f odom_to_world = Affine3f::Identity();
+            odom_to_world.translate(inputs[t].odom.loc);
+            odom_to_world.rotate(inputs[t].odom.angle);
+            odom_to_world = extrinsicCamera.inverse() * odom_to_world;
+            Vector3f loc(odom_to_world.translation());
+            Quaternionf angle(odom_to_world.rotation());
+            printf("pose %ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+                    t, loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+        }
         slam.displayPoses();
 
 

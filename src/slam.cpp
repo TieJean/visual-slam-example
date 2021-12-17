@@ -120,9 +120,9 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
                                        loc.x(), loc.y(), loc.z()}; // TODO: free me
         cameras.push_back(camera);
 
-        printf("------observeOdometry------------\n");
-        printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(), odom_loc.x(), odom_loc.y(), odom_loc.z());
-        printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
+        // printf("------observeOdometry------------\n");
+        // printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z(), odom_loc.x(), odom_loc.y(), odom_loc.z());
+        // printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
 
         has_new_pose_ = true; 
     // }
@@ -210,10 +210,21 @@ bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
 }
 
 void Slam::displayPoses() {
-    printf("----------cameras----------\n");
+    printf("----------poses----------\n");
+    Affine3f extrinsicCamera = Affine3f::Identity();
+    extrinsicCamera.translate(Vector3f(0,0,0));
+    extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
     for (size_t i = 0; i < cameras.size(); ++i) {
-        printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
-            i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
+        Affine3f world_to_odom = Affine3f::Identity();
+        world_to_odom.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
+        world_to_odom.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
+        Affine3f odom_to_world = extrinsicCamera.inverse() * world_to_odom.inverse();
+        Vector3f loc(odom_to_world.translation());
+        Quaternionf angle(odom_to_world.rotation());
+        // printf("camera %ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+        //     i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
+        printf("pose %ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            i, loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
     }
 }
 
