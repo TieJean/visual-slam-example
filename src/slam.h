@@ -29,10 +29,10 @@ namespace slam {
 const float kEpsilon = 1e-4;
 const float MIN_DELTA_D = 0.5;
 const float MIN_DELTA_A = 0.8;
-const float fx = 400.000000; 
-const float fy = 400.000000; 
-const float cx = 320.000000; 
-const float cy = 240.000000;
+const float fx = 520.9;
+const float fy = 521.0;
+const float cx = 325.1;
+const float cy = 249.7;
 
 const size_t poseDim = 7;
 const size_t landmarkDim = 3;
@@ -41,24 +41,22 @@ const size_t imgHeight = 480;
 const size_t imgWidth = 640;
 const int imgEdge = 50;
 
-// camera, landmark, measurement idx
-class Measurement {
+class Observation {
 public:
-    size_t landmarkIdx;
-    double measurementX;
-    double measurementY;
-    double depth;
+    vector<KeyPoint> kps;
+    Mat descriptors;
+    Mat depth; // has redundant memory
 
-    Measurement() {}
+    Observation() {}
 
-    Measurement(size_t landmarkIdx, double measurementX, double measurementY, double depth) {
-        this->landmarkIdx = landmarkIdx;
-        this->measurementX = measurementX;
-        this->measurementY = measurementY;
+    Observation(const vector<KeyPoint>& kps, const Mat& descriptors, const Mat& depth) {
+        this->kps = kps;
+        this->descriptors = descriptors;
         this->depth = depth;
     }
 };
 
+// camera, landmark, measurement idx
 class CLM {
 public:
     size_t poseIdx;
@@ -80,6 +78,11 @@ public:
 
     void setLandmarkIdx(size_t landmarkIdx) { this->landmarkIdx = landmarkIdx;  }
 
+    void setMeasurement(const KeyPoint& kp) {
+        this->measurement[0] = kp.pt.x;
+        this->measurement[1] = kp.pt.y;
+    }
+
     void setMeasurement(double measurementX, double measurementY) {
         this->measurement[0] = measurementX;
         this->measurement[1] = measurementY;
@@ -87,8 +90,8 @@ public:
 
     bool operator==(const CLM& other) const {
         return poseIdx == other.poseIdx 
-            && measurement[0] == other.measurement[0]
-            && measurement[1] == other.measurement[1];
+            && (abs(measurement[0] - other.measurement[0]) < kEpsilon)
+            && (abs(measurement[1] - other.measurement[1]) < kEpsilon);
     }
 };
 
@@ -137,33 +140,38 @@ public:
     Slam();
 
     void init(size_t N_POSE, size_t N_LANDMARK);
-    void observeImage(const vector<Measurement>& observation);
+    void observeImage(const Mat& img, const Mat& depth);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
     bool optimize(); // for vslam dataset
     // void displayCLMS();
     void displayPoses();
     void displayLandmarks();
-    void imgToWorld_(double* camera, const int& u, const int& v, const int& z,
+    void imgToWorld_(double* camera, const int x, const int y, const Mat& depth,
                      float* X_ptr, float* Y_ptr, float* Z_ptr);
-    bool worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
+    void imgToWorld_(double* camera, const int x, const int y, const int z,
+                     float* X_ptr, float* Y_ptr, float* Z_ptr);
+    bool worldToImg_(double* camera, const float X, const float Y, const float Z,
                      float* x_ptr, float* y_ptr);
     void dumpLandmarksToCSV(string path);
     void dumpPosesToCSV(string path);
 
 private:
+    FeatureTracker feature_tracker;
     Vector3f prev_odom_loc_;
     Quaternionf prev_odom_angle_;
     bool has_new_pose_;
+    // structures stored optimized results
+    vector<double*> poses;
 
+    // temporary structures used for optimization
     vector<double*> cameras;
-    vector<double*> points;
-    vector<unsigned short> point_cnts;
-    vector<vector<Measurement>> observations; // observations[i]: observation made at i-th pose
+    vector<pair<double*, unsigned short>> points; // <coordinate, number of observations>
+
+    // temporal structures to store historical observations
+    vector<Observation> observations;
     vector<CLM> clms;
 
     int clmsFind_(const CLM& clm);
-    
-
 };
 
 } 

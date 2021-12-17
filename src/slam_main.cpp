@@ -84,79 +84,80 @@ int main(int argc, char** argv) {
     }
 
     if (1) {
-        const string DATA_DIR = "../data/vslam_set2/";
-        const string FEATURE_DIR = DATA_DIR + "features/";
-        size_t N_POSE = stoi(argv[1]);
-        size_t N_LANDMARK = 2 + stoi(argv[2]);
+        // vector<pair<>>
+        // const string DATA_DIR = "../data/vslam_set2/";
+        // const string FEATURE_DIR = DATA_DIR + "features/";
+        // size_t N_POSE = stoi(argv[1]);
+        // size_t N_LANDMARK = 2 + stoi(argv[2]);
 
-        vector<Vector3f> landmarks; // store landmark positions in world coordinate
-        ifstream fp;
-        size_t line_num;
-        string line;
-        Slam slam;
-        vector<Measurement> measurements;
+        // vector<Vector3f> landmarks; // store landmark positions in world coordinate
+        // ifstream fp;
+        // size_t line_num;
+        // string line;
+        // Slam slam;
+        // vector<Measurement> measurements;
 
-        fp.open(FEATURE_DIR + "features.txt");
-        if (!fp.is_open()) {
-            printf("error in opening file\n");
-            exit(1);
-        }
-        while ( getline(fp, line) ) {
-            float tmp[4];
-            stringstream tokens(line);
-            tokens >> tmp[0] >> tmp[1] >> tmp[2] >> tmp[3];
-            landmarks.emplace_back(tmp[1], tmp[2], tmp[3]);
-        }
-        fp.close();
+        // fp.open(FEATURE_DIR + "features.txt");
+        // if (!fp.is_open()) {
+        //     printf("error in opening file\n");
+        //     exit(1);
+        // }
+        // while ( getline(fp, line) ) {
+        //     float tmp[4];
+        //     stringstream tokens(line);
+        //     tokens >> tmp[0] >> tmp[1] >> tmp[2] >> tmp[3];
+        //     landmarks.emplace_back(tmp[1], tmp[2], tmp[3]);
+        // }
+        // fp.close();
 
         
-        slam.init(N_POSE, 99);
-        for (size_t t = 1; t <= N_POSE; ++t) {
+        // slam.init(N_POSE, 99);
+        // for (size_t t = 1; t <= N_POSE; ++t) {
             
-            if (t < 10) {
-                fp.open(DATA_DIR + "00000" + to_string(t) + ".txt");
-            } else {
-                fp.open(DATA_DIR + "0000"  + to_string(t) + ".txt");
-            }
-            if (!fp.is_open()) {
-                printf("error in opening file\n");
-                exit(1);
-            }
-            line_num = 0;
-            measurements.clear();
+        //     if (t < 10) {
+        //         fp.open(DATA_DIR + "00000" + to_string(t) + ".txt");
+        //     } else {
+        //         fp.open(DATA_DIR + "0000"  + to_string(t) + ".txt");
+        //     }
+        //     if (!fp.is_open()) {
+        //         printf("error in opening file\n");
+        //         exit(1);
+        //     }
+        //     line_num = 0;
+        //     measurements.clear();
 
-            double pose[7]; 
-            while ( getline(fp, line) ) {
-                ++line_num;
-                if (line_num == 1) {continue;}
+        //     double pose[7]; 
+        //     while ( getline(fp, line) ) {
+        //         ++line_num;
+        //         if (line_num == 1) {continue;}
                 
-                if (line_num == 2) { // pose
-                    stringstream tokens(line);
-                    tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
-                    pose[1] = -pose[1];
-                    pose[2] = -pose[2];
-                    pose[4] = -pose[4];
-                    pose[5] = -pose[5];
-                    slam.observeOdometry(Vector3f(pose[4], pose[5], pose[6]), Quaternionf(pose[0], pose[1], pose[2], pose[3]));
-                    // printf("tokens: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                    continue;
-                }
-                if (line_num > N_LANDMARK) {break;}
-                size_t feature_idx;
-                float measurement_x, measurement_y;
-                stringstream tokens(line);
-                tokens >> feature_idx >> measurement_x >> measurement_y;
-                measurements.emplace_back(feature_idx, measurement_x, measurement_y, (landmarks[feature_idx-1].x() - pose[6]) * 5000);
-                // printf("%ld, %.2f, %.2f, %.2f\n", feature_idx, measurement_x, measurement_y, landmarks[feature_idx-1].x() - pose[6]);
-            }
-            slam.observeImage(measurements);
-            fp.close();
-        }
-        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
-        slam.optimize();
-        // slam.displayLandmarks();
-        // slam.displayPoses();
-        slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks.csv");
+        //         if (line_num == 2) { // pose
+        //             stringstream tokens(line);
+        //             tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
+        //             pose[1] = -pose[1];
+        //             pose[2] = -pose[2];
+        //             pose[4] = -pose[4];
+        //             pose[5] = -pose[5];
+        //             slam.observeOdometry(Vector3f(pose[4], pose[5], pose[6]), Quaternionf(pose[0], pose[1], pose[2], pose[3]));
+        //             // printf("tokens: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+        //             continue;
+        //         }
+        //         if (line_num > N_LANDMARK) {break;}
+        //         size_t feature_idx;
+        //         float measurement_x, measurement_y;
+        //         stringstream tokens(line);
+        //         tokens >> feature_idx >> measurement_x >> measurement_y;
+        //         measurements.emplace_back(feature_idx, measurement_x, measurement_y, (landmarks[feature_idx-1].x() - pose[6]) * 5000);
+        //         // printf("%ld, %.2f, %.2f, %.2f\n", feature_idx, measurement_x, measurement_y, landmarks[feature_idx-1].x() - pose[6]);
+        //     }
+        //     slam.observeImage(measurements);
+        //     fp.close();
+        // }
+        // slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks-initEstimate.csv");
+        // slam.optimize();
+        // // slam.displayLandmarks();
+        // // slam.displayPoses();
+        // slam.dumpLandmarksToCSV("../data/results/vslam-set2-landmarks.csv");
 
     }
     
