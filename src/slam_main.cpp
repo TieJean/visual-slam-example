@@ -17,7 +17,7 @@ using namespace Eigen;
  */
 
 int main(int argc, char** argv) {
-    if (1) {
+    if (0) {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
@@ -98,6 +98,10 @@ int main(int argc, char** argv) {
         Slam slam;
         vector<Measurement> measurements;
 
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+
         fp.open(FEATURE_DIR + "features.txt");
         if (!fp.is_open()) {
             printf("error in opening file %s\n", (FEATURE_DIR + "features.txt").c_str());
@@ -135,6 +139,8 @@ int main(int argc, char** argv) {
             measurements.clear();
 
             double pose[7]; 
+            Vector3f loc;
+            Quaternionf angle;
             while ( getline(fp, line) ) {
                 ++line_num;
                 if (line_num == 1) {continue;}
@@ -143,14 +149,12 @@ int main(int argc, char** argv) {
                     stringstream tokens(line);
                     // pose: qw  qx  qy qz  x  y z (camera coordinate)
                     // pose: qw -qy -qz qx -y -z x (world coordinate) 
-                    tokens >> pose[6] >> pose[4] >> pose[5] >> pose[3] >> pose[1] >> pose[2] >> pose[0];
-                    // pose[0] = -pose[0]; // TODO: is this correct??
-                    pose[1] = -pose[1];
-                    pose[2] = -pose[2];
-                    pose[4] = -pose[4];
-                    pose[5] = -pose[5];
-                    slam.observeOdometry(Vector3f(pose[4], pose[5], pose[6]), Quaternionf(pose[0], pose[1], pose[2], pose[3]));
-                    // printf("tokens: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    for (size_t i = 0; i < poseDim; ++i) { tokens >> pose[i]; }
+                    loc   = Vector3f(extrinsicCamera * Vector3f(pose[0], pose[1], pose[2]));
+                    angle = Quaternionf((extrinsicCamera * Quaternionf(pose[6], pose[3], pose[4], pose[5])).rotation());
+                    slam.observeOdometry(loc, angle);
+                    // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+                    // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
                     continue;
                 }
                 size_t feature_idx;
@@ -158,23 +162,31 @@ int main(int argc, char** argv) {
                 stringstream tokens(line);
                 tokens >> feature_idx >> measurement_x >> measurement_y;
                 if (feature_idx > N_LANDMARK) {break;}
+                
                 // camera z --> odom x
                 // camera x --> odom -y
                 // camera y --> odom -z
                 // |(|z2 - z1| - |(x2 - x1)*tan(theta)|) * cos(theta)| - not sure about signs and angles; need to check
                 // landmarks are in world coordinate
-                float epsilon = 0.01;
-                double depth = landmarks[feature_idx-1].x() - pose[6];
-                AngleAxisf angleAxis(Quaternionf(-pose[0], pose[1], pose[2], pose[3]));
-                cout << angleAxis.angle() << endl;
-                float angle = angleAxis.angle();
-                cout << "tan: " << tan(angle) << endl;
-                if ( abs(tan(pose[0])) > epsilon) {
-                    cout << "here" << endl;
-                    depth -= abs( (-landmarks[feature_idx-1].y()-pose[4])/  tan(angle) );
-                    depth = abs(depth * cos(pose[0]));
-                    depth += abs( (-landmarks[feature_idx-1].y()-pose[4]) / sin(angle) ); //  cos(pose[0]) != 0 if camera can see this landmark
-                }
+                Affine3f landmark_to_world = Affine3f::Identity();
+                landmark_to_world.translate(landmarks[feature_idx-1]);
+                landmark_to_world = extrinsicCamera * landmark_to_world;
+                Affine3f camera_to_world = Affine3f::Identity();
+                camera_to_world.translate(Vector3f(pose[0], pose[1], pose[2]));
+                camera_to_world.rotate(Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                camera_to_world = extrinsicCamera * camera_to_world;
+                Affine3f landmark_to_camera = landmark_to_world * camera_to_world.inverse();
+                printf("landmark (world coordinate)  %.2f, %.2f, %.2f\n", landmarks[feature_idx-1].x(), landmarks[feature_idx-1].y(), landmarks[feature_idx-1].z());
+                printf("landmark (camera coordinate) %.2f, %.2f, %.2f\n", landmark_to_world.translation().x(), landmark_to_world.translation().y(), landmark_to_world.translation().z());
+                printf("camera (world coordinate)    %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                cout << "camera (camera coordinate)" << endl;
+                cout << camera_to_world.translation() << endl;
+                cout << camera_to_world.rotation() << endl;
+                cout << "final result (camera coordinate)" << endl;
+                cout << landmark_to_camera.translation() << endl;
+                return 0;
+
+                float depth = 1.0; // TODO: FIXME
                 measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
                 printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
                 printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
