@@ -34,6 +34,7 @@ void Slam::observeImage(const vector<Measurement>& observation) {
     float prev_pred[3];
     float pred[3];
     const size_t T = cameras.size() - 1; // last pose idx
+    // cout << "observeImage: " << T << endl;
 
     if (!has_new_pose_) { return; }
     has_new_pose_ = false;
@@ -42,6 +43,7 @@ void Slam::observeImage(const vector<Measurement>& observation) {
 
     for (size_t t = 0; t < cameras.size() - 1; ++t) {
         prev_observation = observations[t];
+        if (prev_observation.size() == 0) {continue;}
         // iterate through all current measurements
         size_t idx_prev = 0;
         for (size_t idx = 0; idx < observation.size(); ++idx) { 
@@ -58,16 +60,16 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                                         observation[idx].measurementY,
                                         observation[idx].depth,
                                         &pred[0], &pred[1], &pred[2]);
-                cout << "observeImage" << endl;
-                printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", 
-                        cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6], 
-                        prev_observation[idx_prev].measurementX, prev_observation[idx_prev].measurementY, prev_observation[idx_prev].depth,
-                        prev_pred[0], prev_pred[1], prev_pred[2] );
-                printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", 
-                        cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6], 
-                        observation[idx].measurementX, observation[idx].measurementY, observation[idx].depth,
-                        pred[0], pred[1], pred[2] );
-                cout << endl;
+                // cout << idx_prev << "," << idx << ": " << observation[idx].landmarkIdx << endl;
+                // printf("%ld: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", t,
+                //         cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6], 
+                //         prev_observation[idx_prev].measurementX, prev_observation[idx_prev].measurementY, prev_observation[idx_prev].depth,
+                //         prev_pred[0], prev_pred[1], prev_pred[2] );
+                // printf("%ld: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", T,
+                //         cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6], 
+                //         observation[idx].measurementX, observation[idx].measurementY, observation[idx].depth,
+                //         pred[0], pred[1], pred[2] );
+                // cout << endl;
                 if ( point_cnts[landmarkIdx]  == 0 ) {
                     double* point = new double[]{ (prev_pred[0] + pred[0]) / 2, 
                                                   (prev_pred[1] + pred[1]) / 2,
@@ -138,31 +140,7 @@ bool Slam::optimize() {
     //     printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
     //     cout << endl;
     // }
-    vector<vector<pair<double, double>>> debug;
-    debug.resize(6);
-    for (size_t i = 0; i < 6; ++i) { debug[i].resize(99); }
-    for (size_t i = 0; i < 6; ++i) {
-        for (size_t j = 0; j < 99; ++j) {
-            debug[i][j] = pair<double, double>(0,0);
-        }
-    }
-    for (size_t i = 0; i < clms.size(); ++i) {
-        debug[clms[i].poseIdx][clms[i].landmarkIdx] = pair<double, double>(clms[i].measurement[0], clms[i].measurement[1]);
-    }
-    ofstream fp;
-    for (size_t i = 0; i < 6; ++i) {
-        fp.open("../data/results/" + to_string(i+1) + ".csv", ios::trunc);
-        if (!fp.is_open()) {
-            printf("error in opening file\n");
-            exit(1);
-        }
-        for (size_t j = 0; j < 99; ++j) {
-            if (debug[i][j].first == 0 && debug[i][j].second == 0) { continue; }
-            fp << j << "," << debug[i][j].first << "," << debug[i][j].second << endl;
-        }
-        fp.close();
-    }
-    cout << "start optimize" << endl;
+    // cout << "start optimize" << endl;
     // end debug
 
     for (size_t i = 0; i < clms.size(); ++i) {
@@ -210,6 +188,22 @@ void Slam::displayPoses() {
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
     }
+    printf("----------poses----------\n");
+    for (size_t i = 0; i < cameras.size(); ++i) {
+        Affine3f world_to_camera = Affine3f::Identity();
+        world_to_camera.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
+        world_to_camera.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
+        Affine3f camera_to_world = world_to_camera.inverse();
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+        Vector3f loc = extrinsicCamera.inverse() * camera_to_world.translation();
+        AngleAxisf angle_a(camera_to_world.rotation());
+        angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
+        Quaternionf angle(angle_a);
+        printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            i, loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+    }
 }
 
 void Slam::displayLandmarks() {
@@ -237,7 +231,26 @@ void Slam::dumpLandmarksToCSV(string path) {
 }
 
 void Slam::dumpPosesToCSV(string path) {
-
+    ofstream fp;
+    fp.open(path, ios::trunc);
+    if (!fp.is_open()) {
+        printf("error in opening file\n");
+        exit(1);
+    }
+    for (size_t i = 0; i < cameras.size(); ++i) {
+        Affine3f world_to_camera = Affine3f::Identity();
+        world_to_camera.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
+        world_to_camera.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
+        Affine3f camera_to_world = world_to_camera.inverse();
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+        Vector3f loc = extrinsicCamera.inverse() * camera_to_world.translation();
+        AngleAxisf angle_a(camera_to_world.rotation());
+        angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
+        Quaternionf angle(angle_a);
+        fp << loc.x() << "," << loc.y() << "," << loc.z() << "," <<  angle.x() << "," << angle.y() << "," << angle.z() << "," << angle.w() << endl; 
+    }
 }
 
 void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,

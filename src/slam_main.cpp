@@ -108,7 +108,6 @@ int main(int argc, char** argv) {
         size_t line_num;
         string line;
         Slam slam;
-        vector<Measurement> measurements;
 
         Affine3f extrinsicCamera = Affine3f::Identity();
         extrinsicCamera.translate(Vector3f(0,0,0));
@@ -135,20 +134,18 @@ int main(int argc, char** argv) {
                 fp.open(DATA_DIR + "00000" + to_string(t) + ".txt");
                 if (!fp.is_open()) {
                     printf("error in opening file %s\n", (DATA_DIR + "00000" + to_string(t) + ".txt").c_str());
-                    printf("error in opening file\n");
                     exit(1);
                 }
             } else {
                 fp.open(DATA_DIR + "0000"  + to_string(t) + ".txt");
                 if (!fp.is_open()) {
                     printf("error in opening file %s\n", (DATA_DIR + "0000"  + to_string(t) + ".txt").c_str());
-                    printf("error in opening file\n");
                     exit(1);
                 }
             }
             
             line_num = 0;
-            measurements.clear();
+            vector<Measurement> measurements; 
 
             double pose[7]; 
             Vector3f loc;
@@ -168,6 +165,7 @@ int main(int argc, char** argv) {
                     angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
                     angle = Quaternionf(angle_a);
                     slam.observeOdometry(loc, angle);
+                    // cout << t << endl;
                     // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
                     // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
                     continue;
@@ -176,36 +174,37 @@ int main(int argc, char** argv) {
                 float measurement_x, measurement_y;
                 stringstream tokens(line);
                 tokens >> feature_idx >> measurement_x >> measurement_y;
-                if (feature_idx > N_LANDMARK) {break;}
-                
-                // camera z --> odom x
-                // camera x --> odom -y
-                // camera y --> odom -z
-                Vector3f landmark_in_world(extrinsicCamera * landmarks[feature_idx-1]);
-                Affine3f camera_to_world = Affine3f::Identity();
-                camera_to_world.translate(loc);
-                camera_to_world.rotate(angle);
-                Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
-                // landmark_in_camera = extrinsicCamera * landmark_in_camera;
-                // cout << "final result (camera coordinate)" << endl;
-                // cout << landmark_in_camera << endl;
+                if (feature_idx <= N_LANDMARK) {
+                    // camera z --> odom x
+                    // camera x --> odom -y
+                    // camera y --> odom -z
+                    Vector3f landmark_in_world(extrinsicCamera * landmarks[feature_idx-1]);
+                    Affine3f camera_to_world = Affine3f::Identity();
+                    camera_to_world.translate(loc);
+                    camera_to_world.rotate(angle);
+                    Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
+                    // landmark_in_camera = extrinsicCamera * landmark_in_camera;
+                    // cout << "final result (camera coordinate)" << endl;
+                    // cout << landmark_in_camera << endl;
 
-                float depth = landmark_in_camera.z(); // TODO: FIXME
-                measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
-                // printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
-                // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
-                // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                cout << endl;
+                    float depth = landmark_in_camera.z(); // TODO: FIXME
+                    measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
+                    // printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                    // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
+                    // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    // cout << endl;
+                }
             }
+            // cout << "before observeImage" << endl;
             slam.observeImage(measurements);
             fp.close();
         }
-        // slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
-        // slam.optimize();
-        // slam.displayLandmarks();
-        // slam.displayPoses();
-        // slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
-
+        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
+        slam.optimize();
+        slam.displayLandmarks();
+        slam.displayPoses();
+        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
+        slam.dumpPosesToCSV("../data/results/vslam-superset-poses.csv");
     }
     
 }
