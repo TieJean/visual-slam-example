@@ -17,7 +17,7 @@ using namespace Eigen;
  */
 
 int main(int argc, char** argv) {
-    if (1) {
+    if (0) {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
 
     }
 
-    if (0) {
+    if (1) {
         const string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
@@ -153,6 +153,7 @@ int main(int argc, char** argv) {
             double pose[7]; 
             Vector3f loc;
             Quaternionf angle;
+            AngleAxisf angle_a;
             while ( getline(fp, line) ) {
                 ++line_num;
                 if (line_num == 1) {continue;}
@@ -163,7 +164,9 @@ int main(int argc, char** argv) {
                     // pose: qw -qy -qz qx -y -z x (world coordinate) 
                     for (size_t i = 0; i < poseDim; ++i) { tokens >> pose[i]; }
                     loc   = Vector3f(extrinsicCamera * Vector3f(pose[0], pose[1], pose[2]));
-                    angle = Quaternionf((extrinsicCamera * Quaternionf(pose[6], pose[3], pose[4], pose[5])).rotation());
+                    angle_a = AngleAxisf(Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                    angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
+                    angle = Quaternionf(angle_a);
                     slam.observeOdometry(loc, angle);
                     // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
                     // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
@@ -178,20 +181,20 @@ int main(int argc, char** argv) {
                 // camera z --> odom x
                 // camera x --> odom -y
                 // camera y --> odom -z
-                Vector3f landmark_in_world(landmarks[feature_idx-1].x(), landmarks[feature_idx-1].y(), landmarks[feature_idx-1].z());
+                Vector3f landmark_in_world(extrinsicCamera * landmarks[feature_idx-1]);
                 Affine3f camera_to_world = Affine3f::Identity();
-                camera_to_world.translate(Vector3f(pose[0], pose[1], pose[2]));
-                camera_to_world.rotate(Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                camera_to_world.translate(loc);
+                camera_to_world.rotate(angle);
                 Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
-                landmark_in_camera = extrinsicCamera * landmark_in_camera;
-                cout << "final result (camera coordinate)" << endl;
-                cout << landmark_in_camera << endl;
+                // landmark_in_camera = extrinsicCamera * landmark_in_camera;
+                // cout << "final result (camera coordinate)" << endl;
+                // cout << landmark_in_camera << endl;
 
                 float depth = landmark_in_camera.z(); // TODO: FIXME
                 measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
-                printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
-                printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
-                printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                // printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
+                // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
                 cout << endl;
             }
             slam.observeImage(measurements);

@@ -65,7 +65,7 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                         prev_pred[0], prev_pred[1], prev_pred[2] );
                 printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f,%.2f,%.2f | %.2f,%.2f,%.2f\n", 
                         cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6], 
-                        observation[idx_prev].measurementX, observation[idx_prev].measurementY, observation[idx_prev].depth,
+                        observation[idx].measurementX, observation[idx].measurementY, observation[idx].depth,
                         pred[0], pred[1], pred[2] );
                 cout << endl;
                 if ( point_cnts[landmarkIdx]  == 0 ) {
@@ -257,25 +257,11 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    cout << world_to_camera.inverse().translation() << endl;
-    cout << world_to_camera.inverse().rotation() << endl;
     Vector3f world = world_to_camera.inverse() * Vector3f(X, Y, Z);
-    if (0) {
-        cout << endl;
-        cout << Z << endl;
-        cout << x << ", " << y << endl;
-        printf("camera: %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
-        cout << world_to_camera.rotation() << endl;
-        cout << world_to_camera.translation() << endl;
-        cout << endl;
-    }
     
     X = world.x();
     Y = world.y();
     Z = world.z();
-    // X = world.z();
-    // Y = -world.x();
-    // Z = -world.y();
 }
 
 bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const float& Z,
@@ -285,29 +271,14 @@ bool Slam::worldToImg_(double* camera, const float& X, const float& Y, const flo
     
     // X, Y, Z are in world coordinate
     // camera is in image coordinate
-    // cout << "worldToImg_: " << Y << ", " << Z << ", " << X << endl;
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
-    // Vector3f point = world_to_camera * Vector3f(-Y, -Z, X);
     Vector3f point = world_to_camera * Vector3f(X, Y, Z);
-    // cout << "point: " << point.x() << ", " << point.y() << ", " << point.z() << endl;
-    // TODO: danger - fix dividing by small number
     float xp = point.x() / point.z();
     float yp = point.y() / point.z();
     x = xp * fx + cx;
     y = yp * fy + cy;
-    // Vector3f image = cameraIntrinsic * Vector3f(xp, yp, 1);
-    // x = image.x();
-    // y = image.y();
-
-    if (0) {
-        cout << endl;
-        printf("camera: %.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f\n", camera[0], camera[1], camera[2], camera[3], camera[4], camera[5], camera[6]);
-        cout << world_to_camera.rotation() << endl;
-        cout << world_to_camera.translation() << endl;
-        cout << endl;
-    }
 
     return (x < (float)(imgWidth + imgEdge)) && (x >= (float)(-imgEdge)) && (y <= (float)(imgHeight + imgEdge)) && (y > (float)(-imgEdge));
 }
