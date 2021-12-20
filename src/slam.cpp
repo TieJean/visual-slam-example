@@ -106,8 +106,8 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
 
         // assume "pose" and "camera" are transformations in camera coordinate
         Affine3f odom_to_world = Affine3f::Identity();
-        odom_to_world.translate(Vector3f(odom_loc.x(), odom_loc.y(), odom_loc.z()));
-        odom_to_world.rotate(Quaternionf(odom_angle.w(), odom_angle.x(), odom_angle.y(), odom_angle.z()));
+        odom_to_world.translate(odom_loc);
+        odom_to_world.rotate(odom_angle);
         Affine3f world_to_odom = odom_to_world.inverse();
         Quaternionf angle(world_to_odom.rotation());
         Vector3f loc(world_to_odom.translation());
@@ -253,19 +253,13 @@ void Slam::imgToWorld_(double* camera, const int& x, const int& y, const int& z,
     X = (x - cx) * Z / fx;
     Y = (y - cy) * Z / fy;
 
-    // cout << "imgToWorld_: " << X << ", " << Y << ", " << Z << endl;
-    // Quaternionf r(camera[0], camera[1], camera[2], camera[3]);
-    // Vector3f v(camera[4], camera[5], camera[6]);
-    // Vector3f world = r * Vector3f(X, Y, Z) + v;
-    // Vector3f world = r.inverse() * (Vector3f(X, Y, Z) - v);
-
     // camera is in image coordinate
     Affine3f world_to_camera = Affine3f::Identity();
     world_to_camera.translate(Vector3f(camera[4], camera[5], camera[6]));
     world_to_camera.rotate(Quaternionf(camera[0], camera[1], camera[2], camera[3]));
+    cout << world_to_camera.inverse().translation() << endl;
+    cout << world_to_camera.inverse().rotation() << endl;
     Vector3f world = world_to_camera.inverse() * Vector3f(X, Y, Z);
-    // Vector3f world = world_to_camera * Vector3f(X, Y, Z);
-    // cout << "world: " << world.x() << ", " << world.y() << ", " << world.z() << endl;
     if (0) {
         cout << endl;
         cout << Z << endl;

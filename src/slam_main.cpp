@@ -17,7 +17,7 @@ using namespace Eigen;
  */
 
 int main(int argc, char** argv) {
-    if (0) {
+    if (1) {
         // pose: camera_to_world
         // camera: world_to_camera
         Slam slam;
@@ -29,23 +29,35 @@ int main(int argc, char** argv) {
         // 0.750000 0.681639 0.000000 0.000000 0.000000 0.310614 0.950536
         //                0  1    2   3   4         5         6
         //                qw -qy -qz  qx -y        -z         x
-        double pose1[] = {0.926872, 0.000000, -0.375379, 0.000000,  -0.247404, 0.000000, 0.250000}; // 284.517127 427.718032
-        double pose2[] = {0.950536, 0.000000, -0.310614, 0.000000,  -0.681639, 0.000000, 0.750000}; // 224.271992 443.602705
-        // double pose1[] = {1, 0, 0, 0, -20.000000, 0.000000, 0};
-        // double pose2[] = {1, 0, 0, 0, -18.500000, 0.000000, 0};
+        double pose1[] = {0.00,0.00,0.00,0.00,0.00,0.38,0.92}; // 284.517127 427.718032
+        double pose2[] = {0.25,0.25,0.00,0.00,0.00,0.38,0.93}; // 224.271992 443.602705
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+
+        AngleAxisf angle_a1(Quaternionf(pose1[6], pose1[3], pose1[4], pose1[5]).normalized());
+        // cout << "before" << endl;
+        // cout << angle_a1.angle() << endl << angle_a1.axis() << endl;
+        // cout << angle_a1.toRotationMatrix() << endl;
+        angle_a1 = AngleAxisf(angle_a1.angle(), extrinsicCamera * angle_a1.axis());
+        // cout << "after" << endl;
+        // cout << angle_a1.angle() << endl << angle_a1.axis() << endl;
+        // cout << angle_a1.toRotationMatrix() << endl;
 
         Affine3f camera_to_world, world_to_camera;
         camera_to_world = Affine3f::Identity();
-        camera_to_world.translate(Vector3f(pose1[4], pose1[5], pose1[6]));
-        camera_to_world.rotate(Quaternionf(pose1[0], pose1[1], pose1[2], pose1[3]));
+        camera_to_world.translate(extrinsicCamera * Vector3f(pose1[0], pose1[1], pose1[2]));
+        camera_to_world.rotate(angle_a1);
         world_to_camera = camera_to_world.inverse();
         Quaternionf angle1(world_to_camera.rotation());
         Vector3f loc1(world_to_camera.translation());
         double* camera1 = new double[] {angle1.w(), angle1.x(), angle1.y(), angle1.z(),
                                         loc1.x(), loc1.y(), loc1.z()};
+        AngleAxisf angle_a2(Quaternionf(pose2[6], pose2[3], pose2[4], pose2[5]).normalized());
+        angle_a2 = AngleAxisf(angle_a2.angle(), extrinsicCamera * angle_a2.axis());
         camera_to_world = Affine3f::Identity();
-        camera_to_world.translate(Vector3f(pose2[4], pose2[5], pose2[6]));
-        camera_to_world.rotate(Quaternionf(pose2[0], pose2[1], pose2[2], pose2[3]));
+        camera_to_world.translate(Vector3f(pose2[0], pose2[1], pose2[2]));
+        camera_to_world.rotate(angle_a2);
         world_to_camera = camera_to_world.inverse();
         Quaternionf angle2(world_to_camera.rotation());
         Vector3f loc2(world_to_camera.translation());
@@ -58,16 +70,16 @@ int main(int argc, char** argv) {
         float X, Y, Z;
         float x, y, z;
         float x_pred, y_pred;
-        x = 224.271992; 
-        y = 443.602705; // observation made by camera2
+        x = 284.517127; 
+        y = 427.718032; // observation made by camera2
         z = 11.07 * 5000;
         slam.imgToWorld_(camera2, x, y, z, &X, &Y, &Z);
         printf("------------\n");
         printf("landmark:     %.2f|%.2f|%.2f\n", X, Y, Z);
         slam.worldToImg_(camera2, X, Y, Z, &x_pred, &y_pred);
-        printf("camera2 measure_pred (predicted by estimate landmark): %.2f|%.2f\n", x_pred, y_pred);  // 224.271992 443.602705
+        printf("camera2 measure_pred (predicted by estimate landmark): %.2f|%.2f\n", x_pred, y_pred);  // 284.517127 427.718032
         slam.worldToImg_(camera1, X, Y, Z, &x_pred, &y_pred);
-        printf("camera1 measure_pred (predicted by estimate landmark): %.2f|%.2f\n", x_pred, y_pred); // 284.517127 427.718032
+        printf("camera1 measure_pred (predicted by estimate landmark): %.2f|%.2f\n", x_pred, y_pred);  // 291.782165 422.021836
         
         printf("------------\n");
         X = 18.883421; // world coordinate
@@ -85,7 +97,7 @@ int main(int argc, char** argv) {
 
     }
 
-    if (1) {
+    if (0) {
         const string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
@@ -166,27 +178,16 @@ int main(int argc, char** argv) {
                 // camera z --> odom x
                 // camera x --> odom -y
                 // camera y --> odom -z
-                // |(|z2 - z1| - |(x2 - x1)*tan(theta)|) * cos(theta)| - not sure about signs and angles; need to check
-                // landmarks are in world coordinate
-                Affine3f landmark_to_world = Affine3f::Identity();
-                landmark_to_world.translate(landmarks[feature_idx-1]);
-                landmark_to_world = extrinsicCamera * landmark_to_world;
+                Vector3f landmark_in_world(landmarks[feature_idx-1].x(), landmarks[feature_idx-1].y(), landmarks[feature_idx-1].z());
                 Affine3f camera_to_world = Affine3f::Identity();
                 camera_to_world.translate(Vector3f(pose[0], pose[1], pose[2]));
                 camera_to_world.rotate(Quaternionf(pose[6], pose[3], pose[4], pose[5]));
-                camera_to_world = extrinsicCamera * camera_to_world;
-                Affine3f landmark_to_camera = landmark_to_world * camera_to_world.inverse();
-                printf("landmark (world coordinate)  %.2f, %.2f, %.2f\n", landmarks[feature_idx-1].x(), landmarks[feature_idx-1].y(), landmarks[feature_idx-1].z());
-                printf("landmark (camera coordinate) %.2f, %.2f, %.2f\n", landmark_to_world.translation().x(), landmark_to_world.translation().y(), landmark_to_world.translation().z());
-                printf("camera (world coordinate)    %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                cout << "camera (camera coordinate)" << endl;
-                cout << camera_to_world.translation() << endl;
-                cout << camera_to_world.rotation() << endl;
+                Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
+                landmark_in_camera = extrinsicCamera * landmark_in_camera;
                 cout << "final result (camera coordinate)" << endl;
-                cout << landmark_to_camera.translation() << endl;
-                return 0;
+                cout << landmark_in_camera << endl;
 
-                float depth = 1.0; // TODO: FIXME
+                float depth = landmark_in_camera.z(); // TODO: FIXME
                 measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
                 printf("%ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
                 printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
@@ -196,11 +197,11 @@ int main(int argc, char** argv) {
             slam.observeImage(measurements);
             fp.close();
         }
-        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
-        slam.optimize();
+        // slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
+        // slam.optimize();
         // slam.displayLandmarks();
         // slam.displayPoses();
-        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
+        // slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
 
     }
     
