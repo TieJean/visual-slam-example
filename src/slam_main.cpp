@@ -98,10 +98,11 @@ int main(int argc, char** argv) {
     }
 
     if (1) {
-        const string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
+        string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
         size_t N_LANDMARK = 2 + stoi(argv[2]);
+        if (argc >= 4) { DATA_DIR = "../data/vslam_superset1/low_density/" + string(argv[3]) + "/"; }
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
@@ -200,6 +201,7 @@ int main(int argc, char** argv) {
             fp.close();
         }
         slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
+        slam.dumpPosesToCSV("../data/results/vslam-superset-poses-initEstimate.csv");
         slam.optimize();
         slam.displayLandmarks();
         slam.displayPoses();
