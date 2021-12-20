@@ -70,16 +70,36 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                 //         observation[idx].measurementX, observation[idx].measurementY, observation[idx].depth,
                 //         pred[0], pred[1], pred[2] );
                 // cout << endl;
+                float thresh = 0.15;
+                // float thresh = 0.5;
                 if ( point_cnts[landmarkIdx]  == 0 ) {
+                    if ( abs(pred[0] - prev_pred[0]) > thresh
+                      || abs(pred[1] - prev_pred[1]) > thresh
+                      || abs(pred[2] - prev_pred[2]) > thresh) {
+                          printf("inconsistent! %ld\n", observation[idx].landmarkIdx);
+                          printf("landmark mean: %.2f, %.2f, %.2f\n", prev_pred[0], prev_pred[1], prev_pred[2]);
+                          printf("landmark new:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
+                    }
                     double* point = new double[]{ (prev_pred[0] + pred[0]) / 2, 
                                                   (prev_pred[1] + pred[1]) / 2,
                                                   (prev_pred[2] + pred[2]) / 2 };
                     points[landmarkIdx] = point;
                     point_cnts[landmarkIdx] = 2;
+                    // cout << "measurement (case1)" << endl;
+                    // printf("%ld, %ld: %.2f, %.2f\n", t+1, landmarkIdx, prev_observation[idx_prev].measurementX,  prev_observation[idx_prev].measurementY);
+                    // printf("%ld, %ld: %.2f, %.2f\n", T+1, landmarkIdx,      observation[idx].measurementX,       observation[idx].measurementY);
                     clms.emplace_back(t, landmarkIdx, prev_observation[idx_prev].measurementX,  prev_observation[idx_prev].measurementY);
                     clms.emplace_back(T, landmarkIdx,      observation[idx].measurementX,       observation[idx].measurementY);
                 } else {
-                    // TODO: points[landmarkIdx][0] = (points[landmarkIdx][0] * point_cnts[landmarkIdx] + curr_pred[0]) / (++point_cnts[landmarkIdx]); 
+                    if ( abs(pred[0] - points[landmarkIdx][0]) > thresh
+                      || abs(pred[1] - points[landmarkIdx][1]) > thresh
+                      || abs(pred[2] - points[landmarkIdx][2]) > thresh) {
+                          printf("outlier! %ld\n", observation[idx].landmarkIdx);
+                          printf("landmark mean: %.2f, %.2f, %.2f\n", points[landmarkIdx][0], points[landmarkIdx][1], points[landmarkIdx][2]);
+                          printf("landmark new:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
+                    }
+                    // cout << "measurement (case2)" << endl;
+                    // printf("%ld, %ld: %.2f, %.2f\n", T+1, landmarkIdx,      observation[idx].measurementX,       observation[idx].measurementY);
                     points[landmarkIdx][0] = (points[landmarkIdx][0] * point_cnts[landmarkIdx] + pred[0]) / (point_cnts[landmarkIdx] + 1);
                     points[landmarkIdx][1] = (points[landmarkIdx][1] * point_cnts[landmarkIdx] + pred[1]) / (point_cnts[landmarkIdx] + 1);
                     points[landmarkIdx][2] = (points[landmarkIdx][2] * point_cnts[landmarkIdx] + pred[2]) / (point_cnts[landmarkIdx] + 1);
@@ -125,6 +145,21 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
     // }
 }
 
+void Slam::evaluate() {
+    for (size_t i = 0; i < clms.size(); ++i) {
+        Problem problem;
+        CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
+        problem.AddResidualBlock(cost_function, NULL, cameras[clms[i].poseIdx], points[clms[i].landmarkIdx]);
+        double cost;
+        problem.Evaluate(Problem::EvaluateOptions(), &cost, nullptr, nullptr, nullptr);
+        printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
+        printf("camera: %ld - %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", clms[i].poseIdx+1, cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
+        printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
+        printf("cost:   %.2f\n", cost);
+        cout << endl;
+    }
+}
+
 bool Slam::optimize() {
     cout << "optimize" << endl;
     Problem problem;
@@ -134,12 +169,20 @@ bool Slam::optimize() {
     }
 
     // debug start
-    // for (size_t i = 0; i < clms.size(); ++i) {
-    //     printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
-    //     printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
-    //     printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
-    //     cout << endl;
-    // }
+    ofstream fp;
+    fp.open("../data/results/clms.csv", ios::trunc);
+    if (!fp.is_open()) {
+        printf("error in opening file\n");
+        exit(1);
+    }
+    for (size_t i = 0; i < clms.size(); ++i) {
+        // cout << i << endl;
+        // printf("measurement: %.2f, %.2f\n", clms[i].measurement[0], clms[i].measurement[1]);
+        // printf("camera: %ld - %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", clms[i].poseIdx+1, cameras[clms[i].poseIdx][0], cameras[clms[i].poseIdx][1], cameras[clms[i].poseIdx][2], cameras[clms[i].poseIdx][3], cameras[clms[i].poseIdx][4], cameras[clms[i].poseIdx][5], cameras[clms[i].poseIdx][6]);
+        // printf("points: %ld - %.2f,%.2f,%.2f\n", clms[i].landmarkIdx, points[clms[i].landmarkIdx][0], points[clms[i].landmarkIdx][1], points[clms[i].landmarkIdx][2]);
+        // cout << endl;
+        fp << clms[i].poseIdx+1 << "," << clms[i].landmarkIdx << "," << clms[i].measurement[0] << "," << clms[i].measurement[1] << endl;
+    }
     // cout << "start optimize" << endl;
     // end debug
 
@@ -183,11 +226,11 @@ bool vectorContains_(const vector<double*>& vec, double* elt, size_t size) {
 }
 
 void Slam::displayPoses() {
-    printf("----------cameras----------\n");
-    for (size_t i = 0; i < cameras.size(); ++i) {
-        printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
-            i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
-    }
+    // printf("----------cameras----------\n");
+    // for (size_t i = 0; i < cameras.size(); ++i) {
+    //     printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+    //         i, cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][4], cameras[i][5], cameras[i][6]);
+    // }
     printf("----------poses----------\n");
     for (size_t i = 0; i < cameras.size(); ++i) {
         Affine3f world_to_camera = Affine3f::Identity();

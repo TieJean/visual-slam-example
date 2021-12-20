@@ -133,13 +133,14 @@ class Slam {
 
 public: 
     bool debug = false;
-    float huberLossScale = 1;
+    float huberLossScale = 1.0;
     Slam();
 
     void init(size_t N_POSE, size_t N_LANDMARK);
     void observeImage(const vector<Measurement>& observation);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
     bool optimize(); // for vslam dataset
+    void evaluate();
     // void displayCLMS();
     void displayPoses();
     void displayLandmarks();

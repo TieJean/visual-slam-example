@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
         // 0.750000 0.681639 0.000000 0.000000 0.000000 0.310614 0.950536
         //                0  1    2   3   4         5         6
         //                qw -qy -qz  qx -y        -z         x
+
         double pose1[] = {0.00,0.00,0.00,0.00,0.00,0.38,0.92}; // 284.517127 427.718032
         double pose2[] = {0.25,0.25,0.00,0.00,0.00,0.38,0.93}; // 224.271992 443.602705
         Affine3f extrinsicCamera = Affine3f::Identity();
@@ -200,8 +201,11 @@ int main(int argc, char** argv) {
             slam.observeImage(measurements);
             fp.close();
         }
+        slam.evaluate();
         slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
         slam.dumpPosesToCSV("../data/results/vslam-superset-poses-initEstimate.csv");
+        slam.displayLandmarks();
+        slam.displayPoses();
         slam.optimize();
         slam.displayLandmarks();
         slam.displayPoses();
