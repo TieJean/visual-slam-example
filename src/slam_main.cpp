@@ -185,9 +185,6 @@ int main(int argc, char** argv) {
                     camera_to_world.translate(loc);
                     camera_to_world.rotate(angle);
                     Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
-                    // landmark_in_camera = extrinsicCamera * landmark_in_camera;
-                    // cout << "final result (camera coordinate)" << endl;
-                    // cout << landmark_in_camera << endl;
 
                     float depth = landmark_in_camera.z(); // TODO: FIXME
                     measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
@@ -211,6 +208,7 @@ int main(int argc, char** argv) {
         slam.displayPoses();
         slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
         slam.dumpPosesToCSV("../data/results/vslam-superset-poses.csv");
+        slam.evaluate();
     }
     
 }
