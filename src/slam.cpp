@@ -29,6 +29,17 @@ void Slam::init(size_t N_POSE, size_t N_LANDMARK) {
     }
 }
 
+void Slam::initLandmarks(const vector<Vector3f>& landmarks, const size_t n_landmark) {
+    Affine3f extrinsicCamera = Affine3f::Identity();
+    extrinsicCamera.translate(Vector3f(0,0,0));
+    extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+    cout << "points: " << points.size() << endl;
+    for (size_t i = 1; i <= n_landmark; ++i) {
+        Vector3f landmarkExtrinsic = extrinsicCamera * landmarks[i-1];
+        points[i] = new double[3] {landmarkExtrinsic.x(), landmarkExtrinsic.y(), landmarkExtrinsic.z()};
+    }
+}
+
 void Slam::observeImage(const vector<Measurement>& observation) {
     vector<Measurement> prev_observation; 
     float prev_pred[3];

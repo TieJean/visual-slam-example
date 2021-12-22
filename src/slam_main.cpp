@@ -198,7 +198,12 @@ int main(int argc, char** argv) {
             slam.observeImage(measurements);
             fp.close();
         }
-        slam.evaluate();
+
+        cout << "before initLandmarks" << endl;
+        slam.initLandmarks(landmarks, N_LANDMARK);
+        cout << "after initLandmarks" << endl;
+        
+        // slam.evaluate();
         slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
         slam.dumpPosesToCSV("../data/results/vslam-superset-poses-initEstimate.csv");
         slam.displayLandmarks();
@@ -208,7 +213,7 @@ int main(int argc, char** argv) {
         slam.displayPoses();
         slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
         slam.dumpPosesToCSV("../data/results/vslam-superset-poses.csv");
-        slam.evaluate();
+        // slam.evaluate();
     }
     
 }

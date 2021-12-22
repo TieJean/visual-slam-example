@@ -139,6 +139,7 @@ public:
     void init(size_t N_POSE, size_t N_LANDMARK);
     void observeImage(const vector<Measurement>& observation);
     void observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_angle);
+    void initLandmarks(const vector<Vector3f>& landmarks, const size_t n_landmark);
     bool optimize(); // for vslam dataset
     void evaluate();
     // void displayCLMS();
