@@ -190,6 +190,8 @@ bool Slam::optimize() {
         CostFunction* cost_function = ReprojectionError::Create(clms[i].measurement[0], clms[i].measurement[1]);
         problem.AddResidualBlock(cost_function, new HuberLoss(huberLossScale), cameras[clms[i].poseIdx], points[clms[i].landmarkIdx]);
     }
+    problem.SetParameterBlockConstant(cameras[0]); // TODO: delete me after debugging
+
     Solver::Options options;
     options.max_num_iterations = 100;
     options.linear_solver_type = ceres::DENSE_SCHUR;
