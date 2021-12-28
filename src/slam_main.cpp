@@ -99,11 +99,11 @@ int main(int argc, char** argv) {
     }
 
     if (1) {
-        string DATA_DIR = "../data/vslam_superset1/low_density/groundtruth/";
+        string DATA_DIR = "../data/unittest1/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
         size_t N_LANDMARK = 2 + stoi(argv[2]);
-        if (argc >= 4) { DATA_DIR = "../data/vslam_superset1/low_density/" + string(argv[3]) + "/"; }
+        if (argc >= 4) { DATA_DIR = "../data/unittest1/" + string(argv[3]) + "/"; }
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
@@ -167,9 +167,10 @@ int main(int argc, char** argv) {
                     angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
                     angle = Quaternionf(angle_a);
                     slam.observeOdometry(loc, angle);
-                    // cout << t << endl;
-                    // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
-                    // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    cout << t << endl;
+                    printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+                    printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    cout << endl;
                     continue;
                 }
                 size_t feature_idx;
@@ -188,30 +189,29 @@ int main(int argc, char** argv) {
 
                     float depth = landmark_in_camera.z(); // TODO: FIXME
                     measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
-                    // printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
-                    // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
-                    // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                    // cout << endl;
+                    printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                    printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
+                    printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    cout << endl;
                 }
             }
-            // cout << "before observeImage" << endl;
             slam.observeImage(measurements);
             fp.close();
         }
 
         // slam.initLandmarks(landmarks, N_LANDMARK);
         
-        slam.evaluate();
-        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks-initEstimate.csv");
-        slam.dumpPosesToCSV("../data/results/vslam-superset-poses-initEstimate.csv");
-        slam.displayLandmarks();
-        slam.displayPoses();
-        slam.optimize();
-        slam.displayLandmarks();
-        slam.displayPoses();
-        slam.dumpLandmarksToCSV("../data/results/vslam-superset-landmarks.csv");
-        slam.dumpPosesToCSV("../data/results/vslam-superset-poses.csv");
-        slam.evaluate();
+        // slam.evaluate();
+        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
+        // slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
+        // slam.displayLandmarks();
+        // slam.displayPoses();
+        // slam.optimize();
+        // slam.displayLandmarks();
+        // slam.displayPoses();
+        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
+        // slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
+        // slam.evaluate();
     }
     
 }
