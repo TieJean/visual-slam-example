@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
         fp.close();
 
         
-        slam.init(N_POSE, 1000);
+        slam.init(N_POSE, 5);
         for (size_t t = 1; t <= N_POSE; ++t) {
             
             if (t < 10) {
@@ -164,13 +164,19 @@ int main(int argc, char** argv) {
                     for (size_t i = 0; i < poseDim; ++i) { tokens >> pose[i]; }
                     loc   = Vector3f(extrinsicCamera * Vector3f(pose[0], pose[1], pose[2]));
                     angle_a = AngleAxisf(Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                    // cout << "before: " << angle_a.angle() << endl;
+                    // cout << angle_a.axis() << endl;
                     angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
+                    // cout << "after: " << angle_a.angle() << endl;
+                    // cout << angle_a.axis() << endl;
                     angle = Quaternionf(angle_a);
                     slam.observeOdometry(loc, angle);
-                    cout << t << endl;
-                    printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
-                    printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                    cout << endl;
+                    // slam.observeOdometry(Vector3f(pose[0], pose[1], pose[2]), Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                    // cout << t << endl;
+                    // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+                    // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    // cout << angle.toRotationMatrix() << endl;
+                    // cout << endl;
                     continue;
                 }
                 size_t feature_idx;
@@ -189,28 +195,28 @@ int main(int argc, char** argv) {
 
                     float depth = landmark_in_camera.z(); // TODO: FIXME
                     measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
-                    printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
-                    printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
-                    printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                    cout << endl;
+                    // printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                    // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
+                    // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                    // cout << endl;
                 }
             }
             slam.observeImage(measurements);
             fp.close();
         }
 
-        // slam.initLandmarks(landmarks, N_LANDMARK);
+        slam.initLandmarks(landmarks, N_LANDMARK);
         
         // slam.evaluate();
-        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
-        // slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
-        // slam.displayLandmarks();
-        // slam.displayPoses();
-        // slam.optimize();
-        // slam.displayLandmarks();
-        // slam.displayPoses();
-        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
-        // slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
+        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
+        slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
+        slam.displayLandmarks();
+        slam.displayPoses();
+        slam.optimize();
+        slam.displayLandmarks();
+        slam.displayPoses();
+        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
+        slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
         // slam.evaluate();
     }
     

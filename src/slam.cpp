@@ -18,6 +18,9 @@ Slam::Slam() :
     prev_odom_loc_(0.0,0.0,0.0),
     prev_odom_angle_(0.0,0.0,0.0,0.0),
     has_new_pose_(false) {
+        extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
     }
 
 void Slam::init(size_t N_POSE, size_t N_LANDMARK) {
@@ -30,9 +33,6 @@ void Slam::init(size_t N_POSE, size_t N_LANDMARK) {
 }
 
 void Slam::initLandmarks(const vector<Vector3f>& landmarks, const size_t n_landmark) {
-    Affine3f extrinsicCamera = Affine3f::Identity();
-    extrinsicCamera.translate(Vector3f(0,0,0));
-    extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
     cout << "points: " << points.size() << endl;
     for (size_t i = 1; i <= n_landmark; ++i) {
         Vector3f landmarkExtrinsic = extrinsicCamera * landmarks[i-1];
@@ -51,7 +51,6 @@ void Slam::observeImage(const vector<Measurement>& observation) {
     has_new_pose_ = false;
     observations.push_back(observation);
     if (cameras.size() < 2) { return; }
-
     for (size_t t = 0; t < cameras.size() - 1; ++t) {
         prev_observation = observations[t];
         if (prev_observation.size() == 0) {continue;}
@@ -82,14 +81,13 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                 //         pred[0], pred[1], pred[2] );
                 // cout << endl;
                 float thresh = 0.15;
-                // float thresh = 0.5;
                 if ( point_cnts[landmarkIdx]  == 0 ) {
                     if ( abs(pred[0] - prev_pred[0]) > thresh
                       || abs(pred[1] - prev_pred[1]) > thresh
                       || abs(pred[2] - prev_pred[2]) > thresh) {
                           printf("inconsistent! %ld\n", observation[idx].landmarkIdx);
-                          printf("landmark mean: %.2f, %.2f, %.2f\n", prev_pred[0], prev_pred[1], prev_pred[2]);
-                          printf("landmark new:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
+                          printf("landmark prev: %.2f, %.2f, %.2f\n", prev_pred[0], prev_pred[1], prev_pred[2]);
+                          printf("landmark curr:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
                     }
                     double* point = new double[]{ (prev_pred[0] + pred[0]) / 2, 
                                                   (prev_pred[1] + pred[1]) / 2,
@@ -106,8 +104,8 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                       || abs(pred[1] - points[landmarkIdx][1]) > thresh
                       || abs(pred[2] - points[landmarkIdx][2]) > thresh) {
                           printf("outlier! %ld\n", observation[idx].landmarkIdx);
-                          printf("landmark mean: %.2f, %.2f, %.2f\n", points[landmarkIdx][0], points[landmarkIdx][1], points[landmarkIdx][2]);
-                          printf("landmark new:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
+                          printf("landmark prev: %.2f, %.2f, %.2f\n", points[landmarkIdx][0], points[landmarkIdx][1], points[landmarkIdx][2]);
+                          printf("landmark curr:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
                     }
                     // cout << "measurement (case2)" << endl;
                     // printf("%ld, %ld: %.2f, %.2f\n", T+1, landmarkIdx,      observation[idx].measurementX,       observation[idx].measurementY);
@@ -141,6 +139,11 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
         Affine3f odom_to_world = Affine3f::Identity();
         odom_to_world.translate(odom_loc);
         odom_to_world.rotate(odom_angle);
+        // odom_to_world = extrinsicCamera * odom_to_world;
+        // cout << "quat: "  << Quaternionf(odom_to_world.rotation()) << endl;
+        // cout << "angle: " << AngleAxisf(odom_to_world.rotation()).angle() << endl;
+        // cout << "axis: "  << AngleAxisf(odom_to_world.rotation()).axis() << endl;
+        // cout << "loc: "   << odom_to_world.translation() << endl;
         Affine3f world_to_odom = odom_to_world.inverse();
         Quaternionf angle(world_to_odom.rotation());
         Vector3f loc(world_to_odom.translation());
@@ -250,9 +253,6 @@ void Slam::displayPoses() {
         world_to_camera.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
         world_to_camera.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
         Affine3f camera_to_world = world_to_camera.inverse();
-        Affine3f extrinsicCamera = Affine3f::Identity();
-        extrinsicCamera.translate(Vector3f(0,0,0));
-        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
         Vector3f loc = extrinsicCamera.inverse() * camera_to_world.translation();
         AngleAxisf angle_a(camera_to_world.rotation());
         angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
@@ -298,9 +298,6 @@ void Slam::dumpPosesToCSV(string path) {
         world_to_camera.translate(Vector3f(cameras[i][4], cameras[i][5], cameras[i][6]));
         world_to_camera.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
         Affine3f camera_to_world = world_to_camera.inverse();
-        Affine3f extrinsicCamera = Affine3f::Identity();
-        extrinsicCamera.translate(Vector3f(0,0,0));
-        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
         Vector3f loc = extrinsicCamera.inverse() * camera_to_world.translation();
         AngleAxisf angle_a(camera_to_world.rotation());
         angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());

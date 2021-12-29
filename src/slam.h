@@ -134,6 +134,7 @@ class Slam {
 public: 
     bool debug = false;
     float huberLossScale = 1.0;
+    Affine3f extrinsicCamera;
     Slam();
 
     void init(size_t N_POSE, size_t N_LANDMARK);
