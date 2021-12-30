@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     }
 
     if (1) {
-        string DATA_DIR = "../data/unittest1/";
+        string DATA_DIR = "../data/unittest2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
         size_t N_LANDMARK = 2 + stoi(argv[2]);

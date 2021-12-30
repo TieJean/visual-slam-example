@@ -29,8 +29,8 @@ namespace slam {
 const float kEpsilon = 1e-4;
 const float MIN_DELTA_D = 0.5;
 const float MIN_DELTA_A = 0.8;
-const float fx = 200.000000; 
-const float fy = 200.000000; 
+const float fx = 400.000000; 
+const float fy = 400.000000; 
 const float cx = 320.000000; 
 const float cy = 240.000000;
 
