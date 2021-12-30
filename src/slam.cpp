@@ -88,6 +88,17 @@ void Slam::observeImage(const vector<Measurement>& observation) {
                           printf("inconsistent! %ld\n", observation[idx].landmarkIdx);
                           printf("landmark prev: %.2f, %.2f, %.2f\n", prev_pred[0], prev_pred[1], prev_pred[2]);
                           printf("landmark curr:  %.2f, %.2f, %.2f\n", pred[0], pred[1], pred[2]);
+                          cout << Quaternionf(cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3]).toRotationMatrix() << endl;
+                          printf("%ld: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", t,
+                                cameras[t][0], cameras[t][1], cameras[t][2], cameras[t][3], cameras[t][4], cameras[t][5], cameras[t][6], 
+                                prev_observation[idx_prev].measurementX, prev_observation[idx_prev].measurementY, prev_observation[idx_prev].depth,
+                                prev_pred[0], prev_pred[1], prev_pred[2] );
+                          cout << Quaternionf(cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3]).toRotationMatrix() << endl;
+                          printf("%ld: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f | %.2f, %.2f, %.2f | %.2f, %.2f, %.2f\n", T,
+                                cameras[T][0], cameras[T][1], cameras[T][2], cameras[T][3], cameras[T][4], cameras[T][5], cameras[T][6], 
+                                observation[idx].measurementX, observation[idx].measurementY, observation[idx].depth,
+                                pred[0], pred[1], pred[2] );
+                          cout << endl;
                     }
                     double* point = new double[]{ (prev_pred[0] + pred[0]) / 2, 
                                                   (prev_pred[1] + pred[1]) / 2,
@@ -136,17 +147,19 @@ void Slam::observeOdometry(const Vector3f& odom_loc ,const Quaternionf& odom_ang
         prev_odom_angle_ = odom_angle;
 
         // assume "pose" and "camera" are transformations in camera coordinate
+        // cout << "observeOdometry loc (camera_to_world): " << endl << odom_loc << endl;
+        // cout << "observeOdometry angle (camera_to_world): " << odom_angle << endl;
+        // cout << odom_angle.toRotationMatrix() << endl;
         Affine3f odom_to_world = Affine3f::Identity();
         odom_to_world.translate(odom_loc);
         odom_to_world.rotate(odom_angle);
-        // odom_to_world = extrinsicCamera * odom_to_world;
-        // cout << "quat: "  << Quaternionf(odom_to_world.rotation()) << endl;
-        // cout << "angle: " << AngleAxisf(odom_to_world.rotation()).angle() << endl;
-        // cout << "axis: "  << AngleAxisf(odom_to_world.rotation()).axis() << endl;
-        // cout << "loc: "   << odom_to_world.translation() << endl;
         Affine3f world_to_odom = odom_to_world.inverse();
         Quaternionf angle(world_to_odom.rotation());
         Vector3f loc(world_to_odom.translation());
+        // cout << "observeOdometry loc (world_to_camera): " << endl << loc << endl;
+        // cout << "observeOdometry angle (world_to_camera): " << angle << endl;
+        // cout << angle.toRotationMatrix() << endl;
+        // cout << endl;
         double* camera = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
                                        loc.x(), loc.y(), loc.z()};
         cameras.push_back(camera);
@@ -254,9 +267,13 @@ void Slam::displayPoses() {
         world_to_camera.rotate(Quaternionf(cameras[i][0], cameras[i][1], cameras[i][2], cameras[i][3]));
         Affine3f camera_to_world = world_to_camera.inverse();
         Vector3f loc = extrinsicCamera.inverse() * camera_to_world.translation();
-        AngleAxisf angle_a(camera_to_world.rotation());
-        angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
-        Quaternionf angle(angle_a);
+        Quaternionf angle = Quaternionf(extrinsicCamera.inverse() * camera_to_world.rotation());
+        // AngleAxisf angle_a(camera_to_world.rotation());
+        // angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
+        // cout << "displayPoses angle axis" << endl;
+        // cout << angle_a.angle() << endl;
+        // cout << angle_a.axis() << endl;
+        // Quaternionf angle(angle_a);
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             i, loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
     }
