@@ -168,8 +168,8 @@ int main(int argc, char** argv) {
                     // cout << angle_a.angle() << endl;
                     // cout << angle_a.axis() << endl;
                     // cout << angle_a.toRotationMatrix() << endl;
-                    angle_a = (extrinsicCamera * angle_a).rotation();
-                    // angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
+                    // angle_a = (extrinsicCamera * angle_a).rotation();
+                    angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera * angle_a.axis());
                     // cout << "after: " << endl;
                     // cout << angle_a.angle() << endl;
                     // cout << angle_a.axis() << endl;
@@ -177,11 +177,18 @@ int main(int argc, char** argv) {
                     angle = Quaternionf(angle_a);
                     slam.observeOdometry(loc, angle);
                     // slam.observeOdometry(Vector3f(pose[0], pose[1], pose[2]), Quaternionf(pose[6], pose[3], pose[4], pose[5]));
+                    cout << endl;
                     cout << "pose: " << t << endl;
+                    cout << "angle: " << endl;
+                    cout << angle_a.angle() << endl;
+                    cout << "axis: " << endl;
+                    cout << angle_a.axis() << endl;
+                    cout << "rotation matrix" << endl;
+                    cout << angle_a.toRotationMatrix() << endl;
                     // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
                     // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
-                    cout << loc << endl;
-                    cout << angle.toRotationMatrix() << endl;
+                    // cout << loc << endl;
+                    // cout << angle.toRotationMatrix() << endl;
                     // cout << endl;
                     continue;
                 }
@@ -200,7 +207,7 @@ int main(int argc, char** argv) {
                     Vector3f landmark_in_camera =  camera_to_world.inverse() * landmark_in_world;
                     float depth = landmark_in_camera.x(); // TODO: FIXME
                     measurements.emplace_back(feature_idx, measurement_x, measurement_y, depth * 5000);
-                    printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
+                    // printf("add measurement: %ld, %ld, %.2f, %.2f, %.2f\n", t, feature_idx, measurement_x, measurement_y, depth);
                     // printf("landmark: %.2f, %.2f, %.2f\n", -landmarks[feature_idx-1].y(), -landmarks[feature_idx-1].z(), landmarks[feature_idx-1].x());
                     // printf("pose:     %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
                     // cout << endl;
