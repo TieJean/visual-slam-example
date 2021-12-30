@@ -171,10 +171,10 @@ int main(int argc, char** argv) {
 
     if (1) {
         string DATA_DIR = "../data/unittest2/";
-        const string FEATURE_DIR = DATA_DIR + "features/";
         size_t N_POSE = stoi(argv[1]);
         size_t N_LANDMARK = 2 + stoi(argv[2]);
         if (argc >= 4) { DATA_DIR = DATA_DIR + string(argv[3]) + "/"; }
+         const string FEATURE_DIR = DATA_DIR + "features/";
 
         vector<Vector3f> landmarks; // store landmark positions in world coordinate
         ifstream fp;
@@ -290,18 +290,21 @@ int main(int argc, char** argv) {
             fp.close();
         }
 
-        // slam.initLandmarks(landmarks, N_LANDMARK); // manually init landmark
+        if (argc >= 4 && strcmp(argv[3], "noisy_init_landmark") == 0) {
+            slam.initLandmarks(landmarks, N_LANDMARK); // manually init landmark
+        }
+        
         
         slam.evaluate();
-        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
-        slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
+        slam.dumpLandmarksToCSV("../data/results/unittest2-landmarks-initEstimate.csv");
+        slam.dumpPosesToCSV("../data/results/unittest2-poses-initEstimate.csv");
         slam.displayLandmarks();
         slam.displayPoses();
         slam.optimize();
         slam.displayLandmarks();
         slam.displayPoses();
-        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
-        slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
+        slam.dumpLandmarksToCSV("../data/results/unittest2-landmarks.csv");
+        slam.dumpPosesToCSV("../data/results/unittest2-poses.csv");
         slam.evaluate();
     }
     
