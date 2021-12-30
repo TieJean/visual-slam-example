@@ -270,13 +270,16 @@ void Slam::displayPoses() {
         // Quaternionf angle = Quaternionf(extrinsicCamera.inverse() * camera_to_world.rotation());
         AngleAxisf angle_a(camera_to_world.rotation());
         angle_a = AngleAxisf(angle_a.angle(), extrinsicCamera.inverse() * angle_a.axis());
-        cout << endl;
-        cout << "displayPoses: " << i << endl;
-        cout << "angle: " << endl;
-        cout << angle_a.angle() << endl;
-        cout << "axis: " << endl;
-        cout << angle_a.axis() << endl;
         Quaternionf angle(angle_a);
+        // cout << endl;
+        // cout << "displayPoses: " << i << endl;
+        // cout << "angle: " << endl;
+        // cout << angle_a.angle() << endl;
+        // cout << "axis: " << endl;
+        // cout << angle_a.axis() << endl;
+        // printf("camera: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n" ,cameras[i][4], cameras[i][5], cameras[i][6], cameras[i][1], cameras[i][2], cameras[i][3], cameras[i][0]);
+        // printf("pose: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", camera_to_world.translation().x(), camera_to_world.translation().y(), camera_to_world.translation().z(), 
+        //         Quaternionf(camera_to_world.rotation()).x(), Quaternionf(camera_to_world.rotation()).y(), Quaternionf(camera_to_world.rotation()).z(), Quaternionf(camera_to_world.rotation()).w());
         printf("%ld: %.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
             i, loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
     }

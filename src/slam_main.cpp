@@ -98,6 +98,28 @@ int main(int argc, char** argv) {
 
     }
 
+    if (0) {
+        Affine3f A_to_B = Affine3f::Identity();
+        A_to_B.translate(Vector3f(0, 0, 1));
+        A_to_B.rotate(Quaternionf(0, 0, -1, 0));
+        cout << "A_to_B (matrix)" << endl;
+        cout << A_to_B.matrix() << endl;
+        Affine3f B_to_A = A_to_B.inverse();
+        cout << "B_to_A (matrix)" << endl;
+        cout << B_to_A.matrix() << endl;
+        cout << B_to_A.translation() << endl;
+        cout << Quaternionf(B_to_A.rotation()) << endl;
+
+        Affine3f test1 = Affine3f::Identity();
+        test1.translate(B_to_A.translation());
+        test1.rotate(B_to_A.rotation());
+        test1 = test1.inverse();
+        cout << "test1" << endl;
+        cout << test1.translation() << endl;
+        cout << Quaternionf(test1.rotation()) << endl;
+        cout << endl;
+    }
+
     if (1) {
         string DATA_DIR = "../data/unittest1/";
         const string FEATURE_DIR = DATA_DIR + "features/";
@@ -175,18 +197,20 @@ int main(int argc, char** argv) {
                     // cout << angle_a.axis() << endl;
                     // cout << angle_a.toRotationMatrix() << endl;
                     angle = Quaternionf(angle_a);
-                    slam.observeOdometry(loc, angle);
-                    // slam.observeOdometry(Vector3f(pose[0], pose[1], pose[2]), Quaternionf(pose[6], pose[3], pose[4], pose[5]));
-                    cout << endl;
-                    cout << "pose: " << t << endl;
-                    cout << "angle: " << endl;
-                    cout << angle_a.angle() << endl;
-                    cout << "axis: " << endl;
-                    cout << angle_a.axis() << endl;
-                    cout << "rotation matrix" << endl;
-                    cout << angle_a.toRotationMatrix() << endl;
+
+                    // cout << endl;
+                    // cout << "pose: " << t << endl;
+                    // cout << "angle: " << endl;
+                    // cout << angle_a.angle() << endl;
+                    // cout << "axis: " << endl;
+                    // cout << angle_a.axis() << endl;
+                    // cout << "rotation matrix" << endl;
+                    // cout << angle_a.toRotationMatrix() << endl;
                     // printf("cameras: %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
                     // printf("pose:    %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+
+                    slam.observeOdometry(loc, angle);
+                    // slam.observeOdometry(Vector3f(pose[0], pose[1], pose[2]), Quaternionf(pose[6], pose[3], pose[4], pose[5]));
                     // cout << loc << endl;
                     // cout << angle.toRotationMatrix() << endl;
                     // cout << endl;
@@ -219,17 +243,17 @@ int main(int argc, char** argv) {
 
         // slam.initLandmarks(landmarks, N_LANDMARK); // manually init landmark
         
-        // slam.evaluate();
-        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
-        // slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
-        // slam.displayLandmarks();
+        slam.evaluate();
+        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks-initEstimate.csv");
+        slam.dumpPosesToCSV("../data/results/unittest1-poses-initEstimate.csv");
+        slam.displayLandmarks();
         slam.displayPoses();
-        // slam.optimize();
-        // slam.displayLandmarks();
-        // slam.displayPoses();
-        // slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
-        // slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
-        // slam.evaluate();
+        slam.optimize();
+        slam.displayLandmarks();
+        slam.displayPoses();
+        slam.dumpLandmarksToCSV("../data/results/unittest1-landmarks.csv");
+        slam.dumpPosesToCSV("../data/results/unittest1-poses.csv");
+        slam.evaluate();
     }
     
 }
