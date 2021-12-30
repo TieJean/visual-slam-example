@@ -120,6 +120,55 @@ int main(int argc, char** argv) {
         cout << endl;
     }
 
+    if (0) {
+        Affine3f extrinsicCamera = Affine3f::Identity();
+        extrinsicCamera.translate(Vector3f(0,0,0));
+        extrinsicCamera.rotate(Quaternionf(0.5, 0.5, -0.5, 0.5));
+
+        Slam slam;
+        slam.init(0, 0);
+        Vector3f landmark_in_world(1, -0.866, 0 );
+        landmark_in_world = extrinsicCamera * landmark_in_world;
+        float pred_x, pred_y;
+        Affine3f camera_to_world, world_to_camera;
+        camera_to_world = Affine3f::Identity();
+        camera_to_world.translate(Vector3f(-0.87,0.00,0.00));
+        camera_to_world.rotate(Quaternionf(1, 0.00,0.00,0.00));
+        world_to_camera = camera_to_world.inverse();
+        Quaternionf angle(world_to_camera.rotation());
+        Vector3f loc(world_to_camera.translation());
+        printf("%.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+        double* camera = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
+                                       loc.x(), loc.y(), loc.z()};
+        slam.worldToImg_(camera, landmark_in_world.x(), landmark_in_world.y(), landmark_in_world.z(), &pred_x, &pred_y);
+        cout << pred_x << ", " << pred_y << endl;
+        camera_to_world = Affine3f::Identity();
+        camera_to_world.translate(Vector3f(0.87,0.00,0.00));
+        camera_to_world.rotate(Quaternionf(1, 0.00,0.00,0.00));
+        world_to_camera = camera_to_world.inverse();
+        angle = Quaternionf(world_to_camera.rotation());
+        loc = Vector3f(world_to_camera.translation());
+        printf("%.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+        camera = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
+                                       loc.x(), loc.y(), loc.z()};
+        slam.worldToImg_(camera, landmark_in_world.x(), landmark_in_world.y(), landmark_in_world.z(), &pred_x, &pred_y);
+        cout << pred_x << ", " << pred_y << endl;
+        camera_to_world = Affine3f::Identity();
+        camera_to_world.translate(Vector3f(0.00,0.00,0.50));
+        camera_to_world.rotate(Quaternionf(1, 0.00,0.00,0.00));
+        world_to_camera = camera_to_world.inverse();
+        angle = Quaternionf(world_to_camera.rotation());
+        loc = Vector3f(world_to_camera.translation());
+        printf("%.2f | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f\n", 
+            loc.x(), loc.y(), loc.z(), angle.x(), angle.y(), angle.z(), angle.w());
+        camera = new double[] {angle.w(), angle.x(), angle.y(), angle.z(),
+                                       loc.x(), loc.y(), loc.z()};
+        slam.worldToImg_(camera, landmark_in_world.x(), landmark_in_world.y(), landmark_in_world.z(), &pred_x, &pred_y);
+        cout << pred_x << ", " << pred_y << endl;
+    }
+
     if (1) {
         string DATA_DIR = "../data/unittest2/";
         const string FEATURE_DIR = DATA_DIR + "features/";
